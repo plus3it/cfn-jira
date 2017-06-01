@@ -1,0 +1,114 @@
+[
+    {
+        "ParameterKey": "AmiId",
+        "ParameterValue": "__AMIID__"
+    },
+    {
+        "ParameterKey": "SecurityGroupIds",
+        "ParameterValue": "__SGLIST__"
+    },
+    {
+        "ParameterKey": "SubnetIds",
+        "ParameterValue": "__SUBNET__"
+    },
+    {
+        "ParameterKey": "ProvisionUser",
+        "ParameterValue": "__PROVUSER__"
+    },
+    {
+        "ParameterKey": "KeyPairName",
+        "ParameterValue": "__PROVKEY__"
+    },
+    {
+        "ParameterKey": "AdminPubkeyURL",
+        "ParameterValue": "__KEYURL__"
+    },
+    {
+        "ParameterKey": "Hostname",
+        "ParameterValue": "jira-dc"
+    },
+    {
+        "ParameterKey": "Domainname",
+        "ParameterValue": "__DOMAINNAME__"
+    },
+    {
+        "ParameterKey": "JiraInstallBinUrl",
+        "ParameterValue": "__INSTALLERPKG__"
+    },
+    {
+        "ParameterKey": "JiraInstallerUrl",
+        "ParameterValue": "__INSTALLSCRIPT__"
+    },
+    {
+        "ParameterKey": "JiraNfsSharePath",
+        "ParameterValue": "__NFSSHAREPATH__"
+    },
+    {
+        "ParameterKey": "JiraPgsqlHost",
+        "ParameterValue": "__PGSQLHOST__"
+    },
+    {
+        "ParameterKey": "JiraPgsqlInst",
+        "ParameterValue": "__PGSQLINST__"
+    },
+    {
+        "ParameterKey": "JiraPgsqlManager",
+        "ParameterValue": "__PGSQLUSER__"
+    },
+    {
+        "ParameterKey": "JiraProxyFqdn",
+        "ParameterValue": "__ELBNAME__"
+    },
+    {
+        "ParameterKey": "JiraPgsqlPassword",
+        "ParameterValue": "__PGSQLPASSWD__"
+    },
+    {
+        "ParameterKey": "BackupVolumeDevice",
+        "ParameterValue": "/dev/xvdk"
+    },
+    {
+        "ParameterKey": "BackupVolumeMountPath",
+        "ParameterValue": "/var/backups"
+    },
+    {
+        "ParameterKey": "BackupVolumeSize",
+        "ParameterValue": "10"
+    },
+    {
+        "ParameterKey": "BackupVolumeType",
+        "ParameterValue": "gp2"
+    },
+    {
+        "ParameterKey": "CfnEndpointUrl",
+        "ParameterValue": "https://cloudformation.us-east-1.amazonaws.com"
+    },
+    {
+        "ParameterKey": "EpelRepo",
+        "ParameterValue": "epel"
+    },
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "m4.large"
+    },
+    {
+        "ParameterKey": "NoPublicIp",
+        "ParameterValue": "true"
+    },
+    {
+        "ParameterKey": "NoReboot",
+        "ParameterValue": "true"
+    },
+    {
+        "ParameterKey": "PipIndexFips",
+        "ParameterValue": "https://pypi.org/simple/"
+    },
+    {
+        "ParameterKey": "PipRpm",
+        "ParameterValue": "python2-pip"
+    },
+    {
+        "ParameterKey": "PyStache",
+        "ParameterValue": "pystache"
+    }
+]
