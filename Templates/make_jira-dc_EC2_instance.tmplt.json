@@ -190,9 +190,17 @@
       "Description": "URL to the Jira Datacenter binary-installer file.",
       "Type": "String"
     },
-    "JiraNfsSharePath": {
+    "JiraHomeSharePath": {
       "Default": "",
       "Description": "Share-path of shared Jira-home.",
+      "Type": "String"
+    },
+    "JiraHomeShareType": {
+      "AllowedValues": [
+        "glusterfs",
+        "nfs"
+      ],
+      "Description": "Type of network share hosting persisted Jira-home content.",
       "Type": "String"
     },
     "JiraPgsqlHost": {
@@ -320,7 +328,7 @@
       "CreationPolicy": {
         "ResourceSignal": {
           "Count": "1",
-          "Timeout": "PT10M"
+          "Timeout": "PT20M"
         }
       },
       "Metadata": {
@@ -548,8 +556,11 @@
                 "      export JIRADC_SOFTWARE_URL=\"",
                        { "Ref": "JiraInstallBinUrl" },
                        "\"\n",
-                "      export JIRADC_NFS_SHARE=\"",
-                       { "Ref": "JiraNfsSharePath" },
+                "      export JIRADC_SHARE_PATH=\"",
+                       { "Ref": "JiraHomeSharePath" },
+                       "\"\n",
+                "      export JIRADC_SHARE_TYPE=\"",
+                       { "Ref": "JiraHomeShareType" },
                        "\"\n",
                 "      export JIRADC_PGSQL_HOST=\"",
                        { "Ref": "JiraPgsqlHost" },

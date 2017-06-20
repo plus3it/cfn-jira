@@ -6,16 +6,19 @@
 #################################################################
 # shellcheck disable=SC2086
 PROGNAME="$(basename ${0})"
-DBCFGFILE="/var/atlassian/application-data/jira/dbconfig.xml"
 FWPORTS=(
          80
          443
          8005
          8080
         )
+HSHAREPATH="${JIRADC_SHARE_PATH:-UNDEF}"
+HSHARETYPE="${JIRADC_SHARE_TYPE:-UNDEF}"
 JIRADCURL=${JIRADC_SOFTWARE_URL:-UNDEF}
+JIRADCHOME="/var/atlassian"
+DBCFGDIR="${JIRADCHOME}/application-data/jira"
+DBCFGFILE="${DBCFGDIR}/dbconfig.xml"
 JIRAINSTBIN="/root/atlassian-jira-software-x64.bin"
-NFSSHARE="${JIRADC_NFS_SHARE:-UNDEF}"
 PGSQLHOST="${JIRADC_PGSQL_HOST:-UNDEF}"
 PGSQLTABL="${JIRADC_PGSQL_INST:-UNDEF}"
 PGSQLMANAGR="${JIRADC_PGSQL_MANAGER:-UNDEF}"
@@ -25,8 +28,6 @@ RESPFILE="/root/response.vars"
 RPMDEPLST=(
            postgresql
            postgresql-jdbc
-           nfs-utils
-           nfs4-acl-tools
           )
 
 
@@ -139,18 +140,61 @@ function NfsClientStart {
 ## Main
 ####
 
+# Modify some behaviors depending on Jira-home's share-type
+case "${HSHARETYPE}" in
+   UNDEF)
+      ;;
+   nfs)
+      RPMDEPLST+=(
+            nfs-utils
+            nfs4-acl-tools
+         )
+      (
+       printf "%s\t%s\tnfs4\t" "${HSHAREPATH}" "${JIRADCHOME}" ;
+       printf "rw,relatime,vers=4.1,rsize=1048576,wsize=1048576," ;
+       printf "namlen=255,hard,proto=tcp,timeo=600,retrans=2\t0 0\n"
+      ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
+      ;;
+   glusterfs)
+      RPMDEPLST+=(
+            glusterfs
+            glusterfs-fuse
+            attr
+         )
+      (
+       printf "%s\t%s\tglusterfs\t" "${HSHAREPATH}" "${JIRADCHOME}" ;
+       printf "defaults\t0 0\n"
+      ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
+      ;;
+esac
+
 # Call setup functions
 FwStuff
 InstMissingRPM
-NfsClientStart
 
-mkdir /var/atlassian || err_exit "Failed to create Jira var-dir"
-(
- printf "%s\t/var/atlassian\tnfs4\trw,relatime,vers=4.1," "${NFSSHARE}" ;
- printf "rsize=1048576,wsize=1048576,namlen=255,hard,";
- printf "proto=tcp,timeo=600,retrans=2\t0 0\n"
-) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
-mount /var/atlassian || err_exit "Failed to mount Jira var-dir"
+# Start NFS Client services as necessary
+if [[ $(rpm --quiet -q nfs-utils)$? -eq 0 ]]
+then
+   NfsClientStart
+fi
+
+# Mount persistent Jira home directory
+if [[ -d ${JIRADCHOME} ]]
+then
+   echo "${JIRADCHOME} already exists: skipping create"
+else
+   printf "Attempting to create %s... " "${JIRADCHOME}"
+   mkdir "${JIRADCHOME}" && echo "Success!" || \
+      err_exit "Failed to create Jira var-dir"
+fi
+
+# Mount Jira home-dir if needed
+if [[ $(mountpoint -q "${JIRADCHOME}")$? -ne 0 ]]
+then
+   printf "Attempting to mount %s... " "${JIRADCHOME}"
+   mount "${JIRADCHOME}" && echo "Success!" || 
+      err_exit "Failed to mount Jira var-dir"
+fi
 
 # Create the automated-response file used for
 # unattended install of Jira Datacenter Software
@@ -158,7 +202,7 @@ cat > ${RESPFILE} << EOF
 #install4j response file for JIRA Software 7.3.6
 launch.application\$Boolean=false
 rmiPort\$Long=8005
-app.jiraHome=/var/atlassian/application-data/jira
+app.jiraHome=${JIRADCHOME}/application-data/jira
 app.install.service\$Boolean=true
 existingInstallationDir=/opt/JIRA Software
 sys.confirmedUpdateInstallationString=false
@@ -168,6 +212,16 @@ executeLauncherAction\$Boolean=true
 httpPort\$Long=8080
 portChoice=default
 EOF
+
+# Make sure the config-dir exists
+if [[ -d ${DBCFGDIR} ]]
+then
+   echo "${DBCFGDIR} exists - skipping create"
+else
+   printf "Creating %s... " "${DBCFGDIR}"
+   install -d -m 0700 "${DBCFGDIR}" && echo "Success!" ||
+      err_exit "Failed to create ${DBCFGDIR}"
+fi
 
 # Create dbconfig.xml
 if [[ -f ${DBCFGFILE} ]]
