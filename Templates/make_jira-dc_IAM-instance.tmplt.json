@@ -1,9 +1,9 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This template sets up the IAM role needed by an Confluence instance",
+  "Description": "This template sets up the IAM role needed by an Jira instance",
   "Parameters": {
     "BackupBucketArn": {
-      "Description": "S3 Bucket to host Confluence backups",
+      "Description": "S3 Bucket to host Jira backups",
       "Type": "String"
     },
     "ServiceTld": {
