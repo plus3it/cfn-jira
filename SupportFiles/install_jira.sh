@@ -258,6 +258,7 @@ else
 </jira-database-config>
 EOF
 
+   # shellcheck disable=SC2181
    # Verify that creation worked
    if [[ $? -eq 0 ]]
    then
