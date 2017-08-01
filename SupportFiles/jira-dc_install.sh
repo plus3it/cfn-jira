@@ -6,6 +6,11 @@
 #################################################################
 # shellcheck disable=SC2086
 PROGNAME="$(basename ${0})"
+# Ensure we'v got our CFn envs (in case invoking via other than CFn)
+while read -r ENV
+do
+  export "${ENV}"
+done < /etc/cfn/Jira.envs
 FWPORTS=(
          80
          443
