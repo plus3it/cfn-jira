@@ -1,0 +1,139 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {},
+  "Description": "Template for creating Security groups used to support Jira",
+  "Mappings": {},
+  "Outputs": {
+    "AppSg": {
+      "Description": "Application-access Security Group",
+      "Value": {
+        "Ref": "AppSg"
+      }
+    },
+    "NasSg": {
+      "Description": "EC2-to-NAS Security Group",
+      "Value": {
+        "Ref": "NasSg"
+      }
+    },
+    "RdsSg": {
+      "Description": "EC2-to-RDS Security Group",
+      "Value": {
+        "Ref": "RdsSg"
+      }
+    }
+  },
+  "Parameters": {
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy cluster nodes into.",
+      "Type": "AWS::EC2::VPC::Id"
+    }
+  },
+  "Resources": {
+    "AppSg": {
+      "Properties": {
+        "GroupDescription": "Application access-ports Security Group",
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": "8080",
+            "IpProtocol": "tcp",
+            "ToPort": "8080"
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": "443",
+            "IpProtocol": "tcp",
+            "ToPort": "443"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Jira application Security Group"
+          }
+        ],
+        "VpcId": {
+          "Ref": "TargetVPC"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "NasSg": {
+      "Properties": {
+        "GroupDescription": "EC2-to-Storage Security Group",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Jira EC2/Storage Security Group"
+          }
+        ],
+        "VpcId": {
+          "Ref": "TargetVPC"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "RdsSg": {
+      "Properties": {
+        "GroupDescription": "EC2-to-RDS Security Group",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Jira EC2/RDS Security Group"
+          }
+        ],
+        "VpcId": {
+          "Ref": "TargetVPC"
+        }
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "UpdateAppSg": {
+      "DependsOn": "AppSg",
+      "Properties": {
+        "FromPort": "0",
+        "GroupId": {
+          "Ref": "AppSg"
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Ref": "AppSg"
+        },
+        "ToPort": "65535"
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress"
+    },
+    "UpdateNasSg": {
+      "DependsOn": "NasSg",
+      "Properties": {
+        "FromPort": "0",
+        "GroupId": {
+          "Ref": "NasSg"
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Ref": "NasSg"
+        },
+        "ToPort": "65535"
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress"
+    },
+    "UpdateRdsSg": {
+      "DependsOn": "RdsSg",
+      "Properties": {
+        "FromPort": "5432",
+        "GroupId": {
+          "Ref": "RdsSg"
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Ref": "RdsSg"
+        },
+        "ToPort": "5432"
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress"
+    }
+  }
+}
