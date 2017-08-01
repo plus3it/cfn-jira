@@ -525,27 +525,34 @@
                 "\n",
                 "manage_etc_hosts: true\n",
                 "\n",
-                "bootcmd:\n",
-                "  - cloud-init-per instance mkfs-bkupvolume mkfs -t ext4 ",
                 {
-                  "Ref": "BackupVolumeDevice"
+                  "Fn::If": [
+                    "CreateBackupVolume",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "bootcmd:\n",
+                          "  - cloud-init-per instance mkfs-bkupvolume mkfs -t ext4 ",
+                          { "Ref": "BackupVolumeDevice" },
+                          "\n",
+                          "\n",
+                          "mounts:\n",
+                          "  - [ ",
+                          "\"",
+                          { "Ref": "BackupVolumeDevice" },
+                          "\", ",
+                          "\"",
+                          { "Ref": "BackupVolumeMountPath" },
+                          "\", ",
+                          "\"auto\" ",
+                          "]\n"
+                        ]
+                      ]
+                    },
+                    ""
+                  ]
                 },
-                "\n",
-                "\n",
-                "mounts:\n",
-                "  - [ ",
-                "\"",
-                {
-                  "Ref": "BackupVolumeDevice"
-                },
-                "\", ",
-                "\"",
-                {
-                  "Ref": "BackupVolumeMountPath"
-                },
-                "\", ",
-                "\"auto\" ",
-                "]\n",
                 "\n",
                 "runcmd:\n",
                 "  - |-\n",
@@ -594,6 +601,10 @@
                        { "Ref": "PipRpm" },
                        " || err_exit 'Could not install Cfn dependencies.'\n",
                 "      \n",
+                "      # Export cert bundle ENVs\n",
+                "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      \n",
                 "      # Initialize the Cfn subsystems\n",
                 "      /opt/aws/bin/cfn-init -s ",
                        { "Ref": "AWS::StackName" },
@@ -602,10 +613,8 @@
                        { "Ref": "AWS::Region" },
                        " && echo 'Successfully ran cfn-init'",
                        " || err_exit 'Failed to run cfn-init' > /dev/stderr\n",
-                "    \n",
-                "      # Export cert bundle ENVs\n",
-                "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-                "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      \n",
+                "      env | grep JIRADC_ > /etc/cfn/Jira.envs\n",
                 "      \n",
                 "      # Do pip-stuff\n",
                 "      pip install -i ",
