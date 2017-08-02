@@ -9,7 +9,7 @@
       ]
     }
   },
-  "Description": "This template deployes a small, single-AZ PGSQL database to support Jira.",
+  "Description": "This template deploys a small, single- or multi-AZ PGSQL database to support Jira.",
   "Mappings": {},
   "Metadata": {},
   "Outputs": {
