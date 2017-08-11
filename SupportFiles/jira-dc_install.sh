@@ -56,6 +56,39 @@ function err_exit {
    fi
 }
 
+#
+# Ensure persistent data storage is valid
+function ValidShare {
+   SHARESRVR="${HSHAREPATH/\:*/}"
+   SHAREPATH=${HSHAREPATH/${SHARESRVR}\:\//}
+
+   echo "Attempting to validate share-path"
+   printf "\t- Attempting to mount %s... " "${SHARESRVR}"
+   if [[ ${HSHARETYPE} = glusterfs ]]
+   then
+      mount -t "${HSHARETYPE}" "${SHARESRVR}":/"${SHAREPATH}" /mnt && echo "Success" ||
+        err_exit "Failed to mount ${SHARESRVR}"
+   elif [[ ${HSHARETYPE} = nfs ]]
+   then
+      mount -t "${HSHARETYPE}" "${SHARESRVR}":/ /mnt && echo "Success" ||
+        err_exit "Failed to mount ${SHARESRVR}"
+      printf "\t- Looking for %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
+      if [[ -d /mnt/${SHAREPATH} ]]
+      then
+         echo "Success"
+      else
+         echo "Not found."
+         printf "Attempting to create %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
+         mkdir /mnt/"${SHAREPATH}" && echo "Success" ||
+           err_exit "Failed to create ${SHAREPATH} in ${SHARESRVR}"
+      fi
+   fi
+
+   printf "Cleaning up... "
+   umount /mnt && echo "Success" || echo "Failed"
+}
+
+
 ##
 ## Open firewall ports
 function FwStuff {
@@ -193,6 +226,9 @@ else
    mkdir "${JIRADCHOME}" && echo "Success!" || \
       err_exit "Failed to create Jira var-dir"
 fi
+
+# Ensure that share-service has the exported-path
+ValidShare
 
 # Mount Jira home-dir if needed
 if [[ $(mountpoint -q "${JIRADCHOME}")$? -ne 0 ]]
