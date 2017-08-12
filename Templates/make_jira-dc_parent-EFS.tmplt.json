@@ -16,6 +16,65 @@
             "IamTemplateUri",
             "Ec2TemplateUri"
           ]
+        },
+        {
+          "Label": {
+            "default": "EC2 Parameters"
+          },
+          "Parameters": [
+            "InstanceType",
+            "AmiId",
+            "Ec2Subnet",
+            "Ec2Hostname",
+            "Ec2Domain",
+            "ProvisionUser",
+            "Ec2ProvKey",
+            "AdminPubkeyURL"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Parameters"
+          },
+          "Parameters": [
+            "DbInstanceType",
+            "DbDataSize",
+            "PgsqlVersion",
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Jira Parameters"
+          },
+          "Parameters": [
+            "JiraInstallBinUrl",
+            "JiraInstallerUrl",
+            "JiraProxyFqdn",
+            "JiraHomeSharePath",
+            "JiraHomeShareType",
+            "BackupVolumeDevice",
+            "BackupVolumeMountPath",
+            "BackupVolumeSize",
+            "BackupVolumeType"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous Parameters"
+          },
+          "Parameters": [
+            "ServiceTld",
+            "TargetVPC",
+            "HaSubnets",
+            "EpelRepo",
+            "PyStache",
+            "PipRpm",
+            "PipIndexFips"
+          ]
         }
       ],
       "ParameterLabels": {

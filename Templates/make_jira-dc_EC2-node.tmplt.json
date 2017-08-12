@@ -67,13 +67,22 @@
         },
         {
           "Label": {
-            "default": "Instance - (Optional) Backup-Staging"
+            "default": "Jira Parameters"
           },
           "Parameters": [
+            "JiraProxyFqdn",
+            "JiraInstallBinUrl",
+            "JiraInstallerUrl",
+            "JiraHomeSharePath",
+            "JiraHomeShareType",
             "BackupVolumeSize",
             "BackupVolumeType",
             "BackupVolumeDevice",
-            "BackupVolumeMountPath"
+            "BackupVolumeMountPath",
+            "JiraPgsqlHost",
+            "JiraPgsqlInst",
+            "JiraPgsqlManager",
+            "JiraPgsqlPassword"
           ]
         },
         {
@@ -81,10 +90,10 @@
             "default": "Miscellaneous"
           },
           "Parameters": [
-            "PipIndexFips",
             "EpelRepo",
-            "PipRpm",
             "PyStache",
+            "PipRpm",
+            "PipIndexFips",
             "CfnEndpointUrl"
           ]
         }
