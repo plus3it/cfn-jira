@@ -70,6 +70,7 @@
             "ServiceTld",
             "TargetVPC",
             "HaSubnets",
+            "RolePrefix",
             "EpelRepo",
             "PyStache",
             "PipRpm",
@@ -363,6 +364,10 @@
       "Description": "URI for the template that creates Jira's S3 buckets.",
       "Type": "String"
     },
+    "RolePrefix": {
+      "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
+      "Type": "String"
+    },
     "ServiceTld": {
       "Default": "amazonaws.com",
       "Description": "TLD of the created EFS-endpoint.",
@@ -502,15 +507,9 @@
     "IamRes": {
       "Properties": {
         "Parameters": {
-          "BackupBucketArn": {
-            "Fn::GetAtt": [
-              "S3Res",
-              "Outputs.BucketArn"
-            ]
-          },
-          "ServiceTld": {
-            "Ref": "ServiceTld"
-          }
+          "BackupBucketArn": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketArn" ] },
+          "RolePrefix": { "Ref": "RolePrefix" },
+          "ServiceTld": { "Ref": "ServiceTld" }
         },
         "TemplateURL": {
           "Ref": "IamTemplateUri"
