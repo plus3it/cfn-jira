@@ -124,6 +124,15 @@
       "Properties": {
         "HealthCheckPath": "/secure/Dashboard.jspa",
         "HealthyThresholdCount": "5",
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              { "Ref": "AWS::StackName" },
+              "TargetGroup"
+            ]
+          ]
+        },
         "Port": { "Ref": "JiraServicePort" },
         "Protocol": "HTTP",
         "Targets": [
