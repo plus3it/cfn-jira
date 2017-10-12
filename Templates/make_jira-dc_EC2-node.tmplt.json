@@ -126,6 +126,15 @@
       }
     }
   },
+    "Outputs": {
+    "JiraInstanceId": {
+      "Description": "Instance ID",
+      "Export": {
+        "Name" : { "Fn::Sub": "${AWS::StackName}-InstanceId" }
+      },
+      "Value": { "Ref": "JiradcEC2" }
+    }
+  },
   "Parameters": {
     "AdminPubkeyURL": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
