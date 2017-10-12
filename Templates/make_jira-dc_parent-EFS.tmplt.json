@@ -14,7 +14,8 @@
             "S3TemplateUri",
             "RdsTemplateUri",
             "IamTemplateUri",
-            "Ec2TemplateUri"
+            "Ec2TemplateUri",
+            "ElbTemplateUri"
           ]
         },
         {
@@ -60,6 +61,18 @@
             "BackupVolumeMountPath",
             "BackupVolumeSize",
             "BackupVolumeType"
+          ]
+        },
+        {
+          "Label": {
+            "default": "ELB Parameters"
+          },
+          "Parameters": [
+            "ProxyPrettyName",
+            "JiraListenerCert",
+            "JiraListenPort",
+            "JiraServicePort",
+            "PubElbSubnets"
           ]
         },
         {
@@ -239,6 +252,11 @@
       "Description": "URI for the template that creates Jira's EFS shares.",
       "Type": "String"
     },
+    "ElbTemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates the user-facing web-proxy for the Jira service.",
+      "Type": "String"
+    },
     "EpelRepo": {
       "AllowedPattern": "^[a-z][a-z0-9-]*$",
       "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
@@ -313,9 +331,27 @@
       "Description": "URL to the Jira Datacenter EC2 provisioning-script.",
       "Type": "String"
     },
+    "JiraListenPort": {
+      "Default": "443",
+      "Description": "TCP Port number on which the Jira ELB listens for requests.",
+      "MaxValue": "65535",
+      "MinValue": "1",
+      "Type": "Number"
+    },
+    "JiraListenerCert": {
+      "Default": "",
+      "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
+      "Type": "String"
+    },
     "JiraProxyFqdn": {
       "Description": "FQDN of the front-end proxy host/service for Jira.",
       "Type": "String"
+    },
+    "JiraServicePort": {
+      "Default": "80",
+      "Description": "TCP Port number that the Jira host listens to.",
+      "MaxValue": "65535",
+      "Type": "Number"
     },
     "PgsqlVersion": {
       "AllowedValues": [
@@ -348,6 +384,14 @@
       "Default": "jirabuild",
       "Description": "Default login user account name.",
       "Type": "String"
+    },
+    "ProxyPrettyName": {
+      "Description": "A short, human-friendly label to assign to the ELB (no capital letters).",
+      "Type": "String"
+    },
+    "PubElbSubnets": {
+      "Description": "Select three subnets - each from different, user-facing Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
     },
     "PyStache": {
       "Default": "pystache",
