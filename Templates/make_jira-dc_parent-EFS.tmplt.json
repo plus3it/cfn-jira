@@ -548,6 +548,38 @@
       },
       "Type": "AWS::CloudFormation::Stack"
     },
+    "ElbRes": {
+      "Properties": {
+        "Parameters": {
+          "JiraListenerCert": { "Ref": "JiraListenerCert" },
+          "JiraListenPort": { "Ref": "JiraListenPort" },
+          "JiraServicePort": { "Ref": "JiraServicePort" },
+          "HaSubnets": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "PubElbSubnets" }
+            ]
+          },
+          "JiraInstanceId": {
+            "Fn::GetAtt": [ "Ec2Res", "Outputs.JiraInstanceId" ]
+          },
+          "ProxyPrettyName": { "Ref": "ProxyPrettyName" },
+          "SecurityGroupIds": {
+            "Fn::Join": [
+              ",",
+              [
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] }
+              ]
+            ]
+          },
+          "TargetVPC": { "Ref": "TargetVPC" }
+        },
+        "TemplateURL": {
+          "Ref": "ElbTemplateUri"
+        }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
     "IamRes": {
       "Properties": {
         "Parameters": {
