@@ -1,138 +1,67 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Conditions": {
-    "AssignPublicIp": {
+    "AssignInstanceRole": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "NoPublicIp" },
-            "true"
-          ]
-        }
+        { "Fn::Equals": [ { "Ref": "InstanceRole" }, "" ] }
       ]
     },
-    "CreateBackupVolume": {
+    "AssignPublicIp": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "BackupVolumeDevice" },
-            ""
-          ]
-        }
+        { "Fn::Equals": [ { "Ref": "NoPublicIp" }, "true" ] }
+      ]
+    },
+    "CreateAppVolume": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "AppVolumeDevice" }, "" ] }
       ]
     },
     "Reboot": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "NoReboot" },
-            "true"
-          ]
-        }
+        { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
+      ]
+    },
+    "UseCfnAppInstaller": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "JiraConfScript" }, "" ] }
       ]
     },
     "UseCfnUrl": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "CfnEndpointUrl" },
-            ""
-          ]
-        }
+        { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] } ]
+    },
+    "UseEnvironment": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerEnvironment" }, "" ] }
+      ]
+    },
+    "UseWamConfig": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerConfig" }, "" ] }
       ]
     }
   },
-  "Description": "This template deploys a standalone Linux instance to host a Jira Datacenter node.",
-  "Mappings": {},
-  "Metadata": {
-    "AWS::CloudFormation::Interface": {
-      "ParameterGroups": [
-        {
-          "Label": {
-            "default": "Instance - Main Parameters"
-          },
-          "Parameters": [
-            "AmiId",
-            "InstanceType",
-            "ProvisionUser",
-            "KeyPairName",
-            "AdminPubkeyURL",
-            "Hostname",
-            "Domainname",
-            "SecurityGroupIds",
-            "SubnetIds",
-            "NoPublicIp",
-            "NoReboot"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Jira Parameters"
-          },
-          "Parameters": [
-            "JiraProxyFqdn",
-            "JiraInstallBinUrl",
-            "JiraInstallerUrl",
-            "JiraHomeSharePath",
-            "JiraHomeShareType",
-            "BackupVolumeSize",
-            "BackupVolumeType",
-            "BackupVolumeDevice",
-            "BackupVolumeMountPath",
-            "JiraPgsqlHost",
-            "JiraPgsqlInst",
-            "JiraPgsqlManager",
-            "JiraPgsqlPassword"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Miscellaneous"
-          },
-          "Parameters": [
-            "EpelRepo",
-            "PyStache",
-            "PipRpm",
-            "PipIndexFips",
-            "CfnEndpointUrl"
-          ]
-        }
-      ],
-      "ParameterLabels": {
-         "AdminPubkeyURL": {
-           "default" : "Supplemental SSH Keys"
-         },
-         "CfnEndpointUrl": {
-           "default" : "Cloudformation Endpoint"
-         },
-         "Domainname": {
-           "default" : "Jira DNS domain"
-         },
-         "EpelRepo": {
-           "default" : "EPEL repository label"
-         },
-         "KeyPairName": {
-           "default" : "Default SSH Key"
-         },
-         "NoPublicIp": {
-           "default" : "Disable Public IP"
-         },
-         "PipIndexFips": {
-           "default" : "Pip Index"
-         },
-         "ProvisionUser": {
-           "default" : "Default OS login-account"
-         }
+  "Description": "This template deploys a STIG-hardened Enterprise Linux 7 instance to host the Jira service.",
+  "Mappings": {
+    "Distro2RootDevice": {
+      "AmazonLinux": {
+        "DeviceName": "xvda"
+      },
+      "CentOS": {
+        "DeviceName": "sda1"
+      },
+      "RedHat": {
+        "DeviceName": "sda1"
       }
     }
   },
-    "Outputs": {
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {}
+  },
+  "Outputs": {
     "JiraInstanceId": {
       "Description": "Instance ID",
-      "Export": {
-        "Name" : { "Fn::Sub": "${AWS::StackName}-InstanceId" }
-      },
-      "Value": { "Ref": "JiradcEC2" }
+      "Value": { "Ref": "JiraHost" }
     }
   },
   "Parameters": {
@@ -185,66 +114,15 @@
       "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
       "Type": "String"
     },
-    "Domainname": {
-      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
-      "Description": "Suffix for Jira's hostname and DNS record",
-      "Type": "String"
-    },
-    "Hostname": {
-      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
-      "Default": "jiradc",
-      "Description": "Node-name for Jira's hostname and DNS record",
-      "Type": "String"
-    },
-    "JiraInstallerUrl": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Default": "",
-      "Description": "URL to the Jira Datacenter EC2 provisioning-script.",
-      "Type": "String"
-    },
-    "JiraInstallBinUrl": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Default": "",
-      "Description": "URL to the Jira Datacenter binary-installer file.",
-      "Type": "String"
-    },
-    "JiraHomeSharePath": {
-      "Default": "",
-      "Description": "Share-path of shared Jira-home.",
-      "Type": "String"
-    },
-    "JiraHomeShareType": {
-      "AllowedValues": [
-        "glusterfs",
-        "nfs"
-      ],
-      "Description": "Type of network share hosting persisted Jira-home content.",
-      "Type": "String"
-    },
-    "JiraPgsqlHost": {
-      "Description": "FQDN of PostGreSQL host.",
-      "Type": "String"
-    },
-    "JiraPgsqlInst": {
-      "Description": "Name of the primary PostGreSQL instance.",
-      "Type": "String"
-    },
-    "JiraPgsqlManager": {
-      "Description": "Manager-username of the primary PostGreSQL instance.",
-      "Type": "String"
-    },
-    "JiraPgsqlPassword": {
-      "Description": "Manager-password  of the primary PostGreSQL instance.",
-      "Type": "String"
-    },
-    "JiraProxyFqdn": {
-      "Description": "FQDN of the front-end proxy host/service for Jira.",
-      "Type": "String"
-    },
     "CfnEndpointUrl": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Default": "",
       "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String"
+    },
+    "Domainname": {
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
+      "Description": "Suffix for Jira's hostname and DNS record",
       "Type": "String"
     },
     "EpelRepo": {
@@ -252,6 +130,12 @@
       "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
       "Default": "epel",
       "Description": "Name of network's EPEL repo.",
+      "Type": "String"
+    },
+    "Hostname": {
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
+      "Default": "jiradc",
+      "Description": "Node-name for Jira's hostname and DNS record",
       "Type": "String"
     },
     "InstanceType": {
@@ -285,6 +169,51 @@
       ],
       "Default": "t2.large",
       "Description": "Amazon EC2 instance type",
+      "Type": "String"
+    },
+    "JiraHomeSharePath": {
+      "Default": "",
+      "Description": "Share-path of shared Jira-home.",
+      "Type": "String"
+    },
+    "JiraHomeShareType": {
+      "AllowedValues": [
+        "glusterfs",
+        "nfs"
+      ],
+      "Description": "Type of network share hosting persisted Jira-home content.",
+      "Type": "String"
+    },
+    "JiraInstallBinUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter binary-installer file.",
+      "Type": "String"
+    },
+    "JiraInstallerUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter EC2 provisioning-script.",
+      "Type": "String"
+    },
+    "JiraPgsqlHost": {
+      "Description": "FQDN of PostGreSQL host.",
+      "Type": "String"
+    },
+    "JiraPgsqlInst": {
+      "Description": "Name of the primary PostGreSQL instance.",
+      "Type": "String"
+    },
+    "JiraPgsqlManager": {
+      "Description": "Manager-username of the primary PostGreSQL instance.",
+      "Type": "String"
+    },
+    "JiraPgsqlPassword": {
+      "Description": "Manager-password  of the primary PostGreSQL instance.",
+      "Type": "String"
+    },
+    "JiraProxyFqdn": {
+      "Description": "FQDN of the front-end proxy host/service for Jira.",
       "Type": "String"
     },
     "KeyPairName": {
@@ -342,17 +271,211 @@
     }
   },
   "Resources": {
-    "JiradcEC2": {
+    "JiraHost": {
       "CreationPolicy": {
         "ResourceSignal": {
           "Count": "1",
-          "Timeout": "PT20M"
+          "Timeout": "PT30M"
         }
       },
       "Metadata": {
+        "AWS::CloudFormation::Authentication": {
+          "Ec2IamRole": {
+            "roleName": { "Ref": "InstanceRole" },
+            "type": "S3"
+          }
+        },
         "AWS::CloudFormation::Init": {
-          "config": {
+          "admkey-install": {
             "files": {
+              "/tmp/adminkeys.pub": {
+                "source": { "Ref": "AdminPubkeyURL" },
+                "group": "root",
+                "mode": "000600",
+                "owner": "root"
+              },
+              "/tmp/admkey.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n\n",
+                      "PROVHOME=$(getent passwd ",
+                      { "Ref": "ProvisionUser" },
+                      " | awk -F\":\" '{print $6}')\n",
+                      "\n",
+                      "install -b -m 000600 -o ",
+                      { "Ref": "ProvisionUser" },
+                      " -g ",
+                      { "Ref": "ProvisionUser" },
+                      " /tmp/adminkeys.pub ${PROVHOME}/.ssh/authorized_keys\n",
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              }
+            },
+            "commands": {
+              "1-admkey-install": {
+                "command": "bash -xe /tmp/admkey.sh"
+              }
+            }
+          },
+          "app-install": {
+            "commands": {
+              "10-app-install": {
+                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
+              }
+            },
+            "files": {
+              "/etc/cfn/scripts/glprep.sh": {
+                "group": "root",
+                "mode": "000700",
+                "owner": "root",
+                "source": { "Ref": "JiraConfScript" }
+              }
+            }
+          },
+          "configSets": {
+            "launch": [
+              "setup",
+              "admkey-install",
+              "jira-tmplt-fetch",
+              "osprep-launch",
+              "watchmaker-install",
+              "watchmaker-launch",
+              {
+                "Fn::If": [
+                  "UseCfnAppInstaller",
+                  "app-install",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
+              "finalize",
+              {
+                "Fn::If": [
+                  "Reboot",
+                  "reboot",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              }
+            ]
+          },
+          "finalize": {
+            "commands": {
+              "10-signal-success": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "/opt/aws/bin/cfn-signal -e 0",
+                      " --stack ",
+                      { "Ref": "AWS::StackName" },
+                      " --resource JiraHost",
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                { "Ref": "CfnEndpointUrl" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n"
+                    ]
+                  ]
+                },
+                "ignoreErrors": "true"
+              }
+            }
+          },
+          "install-updates": {
+            "commands": {
+              "10-install-updates": {
+                "command": "yum -y update"
+              }
+            }
+          },
+          "jira-tmplt-fetch": {
+            "commands": {
+              "template-fetch": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "aws s3 cp s3://",
+                      { "Ref": "ConfigBucketPath" },
+                      " /etc/cfn/jira.rb.tmplt"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "osprep-launch": {
+            "commands": {
+              "10-osprep-launch": {
+                "command": "bash -xe /etc/cfn/scripts/osprep.sh"
+              }
+            }
+          },
+          "reboot": {
+            "commands": {
+              "10-reboot": {
+                "command": "shutdown -r +1 &"
+              }
+            }
+          },
+          "setup": {
+            "files": {
+              "/etc/cfn/Jira.envs": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "# Exports used by helper scripts\n",
+                      "JIRADC_FQDN=",
+                      { "Ref": "JiraProxyFqdn" },
+                      "\n",
+                      "JIRADC_SOFTWARE_URL=",
+                      { "Ref": "JiraInstallBinUrl" },
+                      "\n",
+                      "JIRADC_SHARE_PATH=",
+                      { "Ref": "JiraHomeSharePath" },
+                      "\n",
+                      "JIRADC_SHARE_TYPE=",
+                      { "Ref": "JiraHomeShareType" },
+                      "\n",
+                      "JIRADC_PGSQL_HOST=",
+                      { "Ref": "JiraPgsqlHost" },
+                      "\n",
+                      "JIRADC_PGSQL_INST=",
+                      { "Ref": "JiraPgsqlInst" },
+                      "\n",
+                      "JIRADC_PGSQL_MANAGER=",
+                      { "Ref": "JiraPgsqlManager" },
+                      "\n",
+                      "JIRADC_PGSQL_PASSWORD=",
+                      { "Ref": "JiraPgsqlPassword" },
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              },
               "/etc/cfn/cfn-hup.conf": {
                 "content": {
                   "Fn::Join": [
@@ -360,14 +483,30 @@
                     [
                       "[main]\n",
                       "stack=",
-                      {
-                        "Ref": "AWS::StackId"
-                      },
+                      { "Ref": "AWS::StackId" },
                       "\n",
                       "region=",
+                      { "Ref": "AWS::Region" },
+                      "\n",
                       {
-                        "Ref": "AWS::Region"
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                "url=",
+                                { "Ref": "CfnEndpointUrl" },
+                                "\n"
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
                       },
+                      "interval=1",
+                      "\n",
+                      "verbose=true",
                       "\n"
                     ]
                   ]
@@ -383,13 +522,11 @@
                     [
                       "[cfn-auto-reloader-hook]\n",
                       "triggers=post.update\n",
-                      "path=Resources.CfnLaunchConfig.Metadata\n",
+                      "path=Resources.JiraHost.Metadata\n",
                       "action=/opt/aws/bin/cfn-init -v -c update",
                       " --stack ",
-                      {
-                        "Ref": "AWS::StackName"
-                      },
-                      " --resource JiradcEC2",
+                      { "Ref": "AWS::StackName" },
+                      " --resource JiraHost",
                       {
                         "Fn::If": [
                           "UseCfnUrl",
@@ -398,28 +535,78 @@
                               "",
                               [
                                 " --url ",
-                                {
-                                  "Ref": "CfnEndpointUrl"
-                                }
+                                { "Ref": "CfnEndpointUrl" }
                               ]
                             ]
                           },
                           ""
                         ]
-                      }
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n",
+                      "runas=root\n"
                     ]
                   ]
                 },
                 "group": "root",
                 "mode": "000400",
                 "owner": "root"
-              }
-            },
-            "install-updates": {
-              "commands": {
-                "10-install-updates": {
-                  "command": "yum update -y"
-                }
+              },
+              "/etc/cfn/scripts/osprep.sh": {
+                "group": "root",
+                "mode": "000700",
+                "owner": "root",
+                "source": { "Ref": "JiraPrepScript" }
+              },
+              "/etc/cfn/scripts/watchmaker-install.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n\n",
+                      "PYPI_URL=",
+                      { "Ref": "PipIndexFips" },
+                      "\n",
+                      "pip install --index-url=\"$PYPI_URL\" wheel==0.29.0\n",
+                      "pip install",
+                      " --index-url=\"$PYPI_URL\"",
+                      " --upgrade pip setuptools boto3 watchmaker\n\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              },
+              "/tmp/adminkeys.pub": {
+                "group": "root",
+                "mode": "000600",
+                "owner": "root",
+                "source": { "Ref": "AdminPubkeyURL" }
+              },
+              "/tmp/admkey.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n\n",
+                      "PROVHOME=$(getent passwd ",
+                      { "Ref": "ProvisionUser" },
+                      " | awk -F\":\" '{print $6}')\n",
+                      "\n",
+                      "install -b -m 000600 -o ",
+                      { "Ref": "ProvisionUser" },
+                      " -g ",
+                      { "Ref": "ProvisionUser" },
+                      " /tmp/adminkeys.pub ${PROVHOME}/.ssh/authorized_keys\n",
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
               }
             },
             "services": {
@@ -434,51 +621,147 @@
                 }
               }
             }
+          },
+          "watchmaker-install": {
+            "commands": {
+              "10-watchmaker-install": {
+                "command": "bash -xe /etc/cfn/scripts/watchmaker-install.sh"
+              }
+            }
+          },
+          "watchmaker-launch": {
+            "commands": {
+              "10-watchmaker-launch": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "watchmaker --log-level debug",
+                      " --log-dir /var/log/watchmaker",
+                      " --no-reboot",
+                      {
+                        "Fn::If": [
+                          "UseWamConfig",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --config \"",
+                                { "Ref": "WatchmakerConfig" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseEnvironment",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --env \"",
+                                { "Ref": "WatchmakerEnvironment" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "watchmaker-update": {
+            "commands": {
+              "10-watchmaker-update": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "watchmaker --log-level debug",
+                      " --log-dir /var/log/watchmaker",
+                      " --salt-states None",
+                      " --no-reboot",
+                      {
+                        "Fn::If": [
+                          "UseWamConfig",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --config \"",
+                                { "Ref": "WatchmakerConfig" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseEnvironment",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --env \"",
+                                { "Ref": "WatchmakerEnvironment" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
           }
         }
       },
       "Properties": {
         "BlockDeviceMappings": [
           {
-            "DeviceName": "/dev/xvda",
+            "DeviceName": "/dev/sda1",
             "Ebs": {
               "DeleteOnTermination": "true",
-              "VolumeSize": "20",
               "VolumeType": "gp2"
             }
           },
           {
             "Fn::If": [
-              "CreateBackupVolume",
+              "CreateAppVolume",
               {
-                "DeviceName": {
-                  "Ref": "BackupVolumeDevice"
-                },
+                "DeviceName": { "Ref": "AppVolumeDevice" },
                 "Ebs": {
                   "DeleteOnTermination": "true",
-                  "VolumeSize": {
-                    "Ref": "BackupVolumeSize"
-                  },
-                  "VolumeType": {
-                    "Ref": "BackupVolumeType"
-                  }
+                  "VolumeSize": { "Ref": "AppVolumeSize" },
+                  "VolumeType": { "Ref": "AppVolumeType" }
                 }
               },
-              {
-                "Ref": "AWS::NoValue"
-              }
+              { "Ref": "AWS::NoValue" }
             ]
           }
         ],
-        "ImageId": {
-          "Ref": "AmiId"
+        "IamInstanceProfile": {
+          "Fn::If": [
+            "AssignInstanceRole",
+            { "Ref": "InstanceRole" },
+            { "Ref": "AWS::NoValue" }
+          ]
         },
-        "InstanceType": {
-          "Ref": "InstanceType"
-        },
-        "KeyName": {
-          "Ref": "KeyPairName"
-        },
+        "ImageId": { "Ref": "AmiId" },
+        "InstanceType": { "Ref": "InstanceType" },
+        "KeyName": { "Ref": "KeyPairName" },
         "NetworkInterfaces": [
           {
             "AssociatePublicIpAddress": {
@@ -489,12 +772,8 @@
               ]
             },
             "DeviceIndex": "0",
-            "GroupSet": {
-              "Ref": "SecurityGroupIds"
-            },
-            "SubnetId": {
-              "Ref": "SubnetIds"
-            }
+            "GroupSet": { "Ref": "SecurityGroupIds" },
+            "SubnetId": { "Ref": "SubnetId" }
           }
         ],
         "Tags": [
@@ -504,9 +783,7 @@
               "Fn::Join": [
                 "",
                 [
-                  {
-                    "Ref": "AWS::StackName"
-                  }
+                  { "Ref": "AWS::StackName" }
                 ]
               ]
             }
@@ -522,168 +799,115 @@
                 "system_info:\n",
                 "  default_user:\n",
                 "    name: ",
-                {
-                  "Ref": "ProvisionUser"
-                },
+                { "Ref": "ProvisionUser" },
                 "\n",
                 "\n",
                 "hostname: ",
-                {
-                  "Ref": "Hostname"
-                },
+                { "Ref": "ServerHostname" },
                 "\n",
                 "fqdn: ",
-                {
-                  "Ref": "Hostname"
-                },
+                { "Ref": "ServerHostname" },
                 ".",
-                {
-                  "Ref": "Domainname"
-                },
+                { "Ref": "DnsSuffix" },
                 "\n",
-                "manage_etc_hosts: true\n",
+                "runcmd:\n",
+                "  - |\n",
+                "    # Export cert bundle ENVs\n",
+                "    export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "    export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n\n",
+                "    \n",
+                "    # Define our error-handler\n",
+                "    function err_exit {\n",
+                "     echo \"${1}\"\n",
+                "     logger -p kern.crit -t UserData \"${1}\"\n",
+                "     /opt/aws/bin/cfn-signal -e 1 --stack ",
+                { "Ref": "AWS::StackName" },
+                " --resource JiraHost\n",
+                "     exit 1\n",
+                "    }\n",
+                "    # Install RPMs needed by the cfn-tools.\n",
+                "    yum --enablerepo=",
+                { "Ref": "EpelRepo" },
+                " install -y ",
+                { "Ref": "PyStache" },
+                " ",
+                { "Ref": "PipRpm" },
+                " || err_exit 'Could not install Cfn dependencies.'\n",
+                "    \n",
+                "    # Upgrade pip and setuptools\n",
+                "    PYPI_URL=",
+                { "Ref": "PipIndexFips" },
                 "\n",
+                "    pip install --index-url=\"$PYPI_URL\"",
+                " --upgrade pip setuptools\n\n",
+                "    # Update cfn-bootstrapper hash method\n",
+                "    printf 'Updating CFn hash-check method... '\n",
+                "    PYVERS=$(python -c 'import sys;",
+                " version=sys.version_info[:2];",
+                " print(\"{0}.{1}\".format(*version))')\n",
+                "    sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
+                " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
+                "/util.py && echo 'Success' || ",
+                "err_exit 'Failed updating CFn hash-method'\n",
+                "    \n",
+                "    # Initialize the CFn subsystems\n",
+                "    /opt/aws/bin/cfn-init -v -c launch",
+                " --stack ",
+                { "Ref": "AWS::StackName" },
+                " --resource JiraHost",
                 {
                   "Fn::If": [
-                    "CreateBackupVolume",
+                    "UseCfnUrl",
                     {
                       "Fn::Join": [
                         "",
                         [
-                          "bootcmd:\n",
-                          "  - cloud-init-per instance mkfs-bkupvolume mkfs -t ext4 ",
-                          { "Ref": "BackupVolumeDevice" },
-                          "\n",
-                          "\n",
-                          "mounts:\n",
-                          "  - [ ",
-                          "\"",
-                          { "Ref": "BackupVolumeDevice" },
-                          "\", ",
-                          "\"",
-                          { "Ref": "BackupVolumeMountPath" },
-                          "\", ",
-                          "\"auto\" ",
-                          "]\n"
+                          " --url ",
+                          { "Ref": "CfnEndpointUrl" }
                         ]
                       ]
                     },
                     ""
                   ]
                 },
-                "\n",
-                "runcmd:\n",
-                "  - |-\n",
-                "      # Exports used by helper scripts\n",
-                "      export JIRADC_FQDN=\"",
-                       { "Ref": "JiraProxyFqdn" },
-                       "\"\n",
-                "      export JIRADC_SOFTWARE_URL=\"",
-                       { "Ref": "JiraInstallBinUrl" },
-                       "\"\n",
-                "      export JIRADC_SHARE_PATH=\"",
-                       { "Ref": "JiraHomeSharePath" },
-                       "\"\n",
-                "      export JIRADC_SHARE_TYPE=\"",
-                       { "Ref": "JiraHomeShareType" },
-                       "\"\n",
-                "      export JIRADC_PGSQL_HOST=\"",
-                       { "Ref": "JiraPgsqlHost" },
-                       "\"\n",
-                "      export JIRADC_PGSQL_INST=\"",
-                       { "Ref": "JiraPgsqlInst" },
-                       "\"\n",
-                "      export JIRADC_PGSQL_MANAGER=\"",
-                       { "Ref": "JiraPgsqlManager" },
-                       "\"\n",
-                "      export JIRADC_PGSQL_PASSWORD=\"",
-                       { "Ref": "JiraPgsqlPassword" },
-                       "\"\n",
-                "      \n",
-                "      # Helper function\n",
-                "      function err_exit {\n",
-                "         echo \"${1}\"\n",
-                "         logger -p kern.crit -t UserData \"${1}\"\n",
-                "         /opt/aws/bin/cfn-signal -e 1 --stack ",
-                            { "Ref": "AWS::StackName" },
-                          " --resource JiradcEC2\n",
-                "         exit 1\n",
-                "      }\n",
-                "      \n",
-                "      # Install RPMs needed by the cfn-tools.\n",
-                "      yum --enablerepo=",
-                       { "Ref": "EpelRepo" },
-                       " install -y ",
-                       { "Ref": "PyStache" },
-                       " ",
-                       { "Ref": "PipRpm" },
-                       " || err_exit 'Could not install Cfn dependencies.'\n",
-                "      \n",
-                "      # Export cert bundle ENVs\n",
-                "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-                "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-                "      \n",
-                "      # Initialize the Cfn subsystems\n",
-                "      /opt/aws/bin/cfn-init -s ",
-                       { "Ref": "AWS::StackName" },
-                       " -r JiradcEC2 ",
-                       " --region ",
-                       { "Ref": "AWS::Region" },
-                       " && echo 'Successfully ran cfn-init'",
-                       " || err_exit 'Failed to run cfn-init' > /dev/stderr\n",
-                "      \n",
-                "      env | grep JIRADC_ > /etc/cfn/Jira.envs\n",
-                "      \n",
-                "      # Do pip-stuff\n",
-                "      pip install -i ",
-                       { "Ref": "PipIndexFips" },
-                       " --upgrade pip\n",
-                "      \n",
-                "      # Add admin SSH keys to the ",
-                       { "Ref": "ProvisionUser" },
-                       " account\n",
-                "      export PROVHOME=/home/",
-                       { "Ref": "ProvisionUser" },
-                       "\n",
-                "      if [[ ! -d ${PROVHOME}/.ssh ]]\n",
-                "      then\n",
-                "         printf \"Waiting for ${PROVHOME}/.ssh to be created\"\n",
-                "         while [[ ! -d ${PROVHOME}/.ssh ]]\n",
-                "         do\n",
-                "            printf \".\"\n",
-                "            sleep 5\n",
-                "         done\n",
-                "         echo \"Found.\"\n",
-                "      fi\n",
-                "      \n",
-                "      curl -skL ",
-                       { "Ref": "AdminPubkeyURL" },
-                       " >> ${PROVHOME}/.ssh/authorized_keys ||",
-                       " err_exit 'Failed to install admin-users keys'\n",
-                "      \n",
-                "      curl -skL ",
-                       { "Ref": "JiraInstallerUrl" },
-                       " | bash - ||",
-                       " err_exit 'Install script experienced a failure.'\n",
-                "      \n",
-                "      # Install watchmaker\n",
-                "      setenforce 0 || err_exit 'Failed to disarm SEL.'\n",
-                "      PYPI_URL=\"",
-                       { "Ref": "PipIndexFips" },
-                       "\"\n",
-                "      pip install --index-url=\"$PYPI_URL\" --upgrade pip setuptools watchmaker\n",
-                "      \n",
-                "      # Run watchmaker\n",
-                "      watchmaker --log-level debug --log-dir=/var/log/watchmaker -n || err_exit 'Watchmaker did not exit with success-code.'\n",
-                "      \n",
-                "      # Signal Cfn that we're good\n",
-                "      /opt/aws/bin/cfn-signal -e 0 --stack ",
-                       { "Ref": "AWS::StackName" },
-                       " --resource JiradcEC2 --url ",
-                       { "Ref": "CfnEndpointUrl" },
-                       "\n",
-                "      \n",
-                "      init 6\n"
+                " --region ",
+                { "Ref": "AWS::Region" },
+                " ||",
+                " ( echo 'ERROR: cfn-init failed! Aborting!';",
+                " /opt/aws/bin/cfn-signal -e 1",
+                "  --stack ",
+                { "Ref": "AWS::StackName" },
+                "  --resource JiraHost",
+                {
+                  "Fn::If": [
+                    "UseCfnUrl",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          " --url ",
+                          { "Ref": "CfnEndpointUrl" }
+                        ]
+                      ]
+                    },
+                    ""
+                  ]
+                },
+                "  --region ",
+                { "Ref": "AWS::Region" },
+                ";",
+                " exit 1",
+                " )\n\n",
+                "    ## # Install admin-groups keys to provisioning user\n",
+                "    ## curl -skL ",
+                { "Ref": "AdminPubkeyURL" },
+                " -o /tmp/admin.keys || err_exit ",
+                "'Could not download admin keys'\n",
+                "    ## cat /tmp/admin.keys >> /home/",
+                { "Ref": "ProvisionUser" },
+                "/.ssh/authorized_keys || err_exit ",
+                "'Could not add admin keys'\n",
+                "    \n"
               ]
             ]
           }

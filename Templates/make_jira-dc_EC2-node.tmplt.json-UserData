@@ -1,0 +1,695 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {
+    "AssignPublicIp": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "NoPublicIp" },
+            "true"
+          ]
+        }
+      ]
+    },
+    "CreateBackupVolume": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "BackupVolumeDevice" },
+            ""
+          ]
+        }
+      ]
+    },
+    "Reboot": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "NoReboot" },
+            "true"
+          ]
+        }
+      ]
+    },
+    "UseCfnUrl": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "CfnEndpointUrl" },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Description": "This template deploys a standalone Linux instance to host a Jira Datacenter node.",
+  "Mappings": {},
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Instance - Main Parameters"
+          },
+          "Parameters": [
+            "AmiId",
+            "InstanceType",
+            "ProvisionUser",
+            "KeyPairName",
+            "AdminPubkeyURL",
+            "Hostname",
+            "Domainname",
+            "SecurityGroupIds",
+            "SubnetIds",
+            "NoPublicIp",
+            "NoReboot"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Jira Parameters"
+          },
+          "Parameters": [
+            "JiraProxyFqdn",
+            "JiraInstallBinUrl",
+            "JiraInstallerUrl",
+            "JiraHomeSharePath",
+            "JiraHomeShareType",
+            "BackupVolumeSize",
+            "BackupVolumeType",
+            "BackupVolumeDevice",
+            "BackupVolumeMountPath",
+            "JiraPgsqlHost",
+            "JiraPgsqlInst",
+            "JiraPgsqlManager",
+            "JiraPgsqlPassword"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous"
+          },
+          "Parameters": [
+            "EpelRepo",
+            "PyStache",
+            "PipRpm",
+            "PipIndexFips",
+            "CfnEndpointUrl"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+         "AdminPubkeyURL": {
+           "default" : "Supplemental SSH Keys"
+         },
+         "CfnEndpointUrl": {
+           "default" : "Cloudformation Endpoint"
+         },
+         "Domainname": {
+           "default" : "Jira DNS domain"
+         },
+         "EpelRepo": {
+           "default" : "EPEL repository label"
+         },
+         "KeyPairName": {
+           "default" : "Default SSH Key"
+         },
+         "NoPublicIp": {
+           "default" : "Disable Public IP"
+         },
+         "PipIndexFips": {
+           "default" : "Pip Index"
+         },
+         "ProvisionUser": {
+           "default" : "Default OS login-account"
+         }
+      }
+    }
+  },
+    "Outputs": {
+    "JiraInstanceId": {
+      "Description": "Instance ID",
+      "Export": {
+        "Name" : { "Fn::Sub": "${AWS::StackName}-InstanceId" }
+      },
+      "Value": { "Ref": "JiradcEC2" }
+    }
+  },
+  "Parameters": {
+    "AdminPubkeyURL": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL the file containing the admin users' SSH public keys.",
+      "Type": "String"
+    },
+    "AmiId": {
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
+      "Description": "ID of the AMI to launch",
+      "Type": "String"
+    },
+    "BackupVolumeDevice": {
+      "AllowedValues": [
+        "",
+        "/dev/xvdk",
+        "/dev/xvdl",
+        "/dev/xvdm",
+        "/dev/xvdn",
+        "/dev/xvdo"
+      ],
+      "Default": "",
+      "Description": "Device to mount an backup-staging location. Leave blank to launch without a backup-staging volume",
+      "Type": "String"
+    },
+    "BackupVolumeMountPath": {
+      "AllowedPattern": "/.*",
+      "Default": "/var/backups",
+      "Description": "Filesystem path to mount the backup-stageing volume. Ignored if \"BackupVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "BackupVolumeSize": {
+      "ConstraintDescription": "Must be between 1GB and 16384GB.",
+      "Default": "10",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+      "MaxValue": "16384",
+      "MinValue": "10",
+      "Type": "Number"
+    },
+    "BackupVolumeType": {
+      "AllowedValues": [
+        "gp2",
+        "io1",
+        "sc1",
+        "st1",
+        "standard"
+      ],
+      "Default": "gp2",
+      "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "Domainname": {
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
+      "Description": "Suffix for Jira's hostname and DNS record",
+      "Type": "String"
+    },
+    "Hostname": {
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
+      "Default": "jiradc",
+      "Description": "Node-name for Jira's hostname and DNS record",
+      "Type": "String"
+    },
+    "JiraInstallerUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter EC2 provisioning-script.",
+      "Type": "String"
+    },
+    "JiraInstallBinUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter binary-installer file.",
+      "Type": "String"
+    },
+    "JiraHomeSharePath": {
+      "Default": "",
+      "Description": "Share-path of shared Jira-home.",
+      "Type": "String"
+    },
+    "JiraHomeShareType": {
+      "AllowedValues": [
+        "glusterfs",
+        "nfs"
+      ],
+      "Description": "Type of network share hosting persisted Jira-home content.",
+      "Type": "String"
+    },
+    "JiraPgsqlHost": {
+      "Description": "FQDN of PostGreSQL host.",
+      "Type": "String"
+    },
+    "JiraPgsqlInst": {
+      "Description": "Name of the primary PostGreSQL instance.",
+      "Type": "String"
+    },
+    "JiraPgsqlManager": {
+      "Description": "Manager-username of the primary PostGreSQL instance.",
+      "Type": "String"
+    },
+    "JiraPgsqlPassword": {
+      "Description": "Manager-password  of the primary PostGreSQL instance.",
+      "Type": "String"
+    },
+    "JiraProxyFqdn": {
+      "Description": "FQDN of the front-end proxy host/service for Jira.",
+      "Type": "String"
+    },
+    "CfnEndpointUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String"
+    },
+    "EpelRepo": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*$",
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
+      "Default": "epel",
+      "Description": "Name of network's EPEL repo.",
+      "Type": "String"
+    },
+    "InstanceType": {
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "t2.xlarge",
+        "t2.2xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge",
+        "m4.16xlarge",
+        "c3.large",
+        "c3.xlarge",
+        "c3.2xlarge",
+        "c3.4xlarge",
+        "c3.8xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge",
+        "c4.8xlarge"
+      ],
+      "Default": "t2.large",
+      "Description": "Amazon EC2 instance type",
+      "Type": "String"
+    },
+    "KeyPairName": {
+      "Description": "Public/private key pairs allowing the provisioning-user to securely connect to the instance after it launches.",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "NoPublicIp": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "true",
+      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
+      "Type": "String"
+    },
+    "NoReboot": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "false",
+      "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
+      "Type": "String"
+    },
+    "PipIndexFips": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "https://pypi.org/simple/",
+      "Description": "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Type": "String"
+    },
+    "PipRpm": {
+      "Default": "python2-pip",
+      "Description": "Name of preferred pip RPM.",
+      "Type": "String"
+    },
+    "ProvisionUser": {
+      "AllowedPattern": "[a-z0-9]{6,12}+",
+      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters.",
+      "Default": "jirabuild",
+      "Description": "Default login user account name.",
+      "Type": "String"
+    },
+    "PyStache": {
+      "Default": "pystache",
+      "Description": "Name of preferred pystache RPM.",
+      "Type": "String"
+    },
+    "SecurityGroupIds": {
+      "Description": "List of security groups to apply to the instance(s)",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "SubnetIds": {
+      "Description": "Subnet to associate to the Instance",
+      "Type": "AWS::EC2::Subnet::Id"
+    }
+  },
+  "Resources": {
+    "JiradcEC2": {
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT20M"
+        }
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000400",
+                "owner": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.CfnLaunchConfig.Metadata\n",
+                      "action=/opt/aws/bin/cfn-init -v -c update",
+                      " --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      " --resource JiradcEC2",
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                {
+                                  "Ref": "CfnEndpointUrl"
+                                }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      }
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000400",
+                "owner": "root"
+              }
+            },
+            "install-updates": {
+              "commands": {
+                "10-install-updates": {
+                  "command": "yum update -y"
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "DeleteOnTermination": "true",
+              "VolumeSize": "20",
+              "VolumeType": "gp2"
+            }
+          },
+          {
+            "Fn::If": [
+              "CreateBackupVolume",
+              {
+                "DeviceName": {
+                  "Ref": "BackupVolumeDevice"
+                },
+                "Ebs": {
+                  "DeleteOnTermination": "true",
+                  "VolumeSize": {
+                    "Ref": "BackupVolumeSize"
+                  },
+                  "VolumeType": {
+                    "Ref": "BackupVolumeType"
+                  }
+                }
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          }
+        ],
+        "ImageId": {
+          "Ref": "AmiId"
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyPairName"
+        },
+        "NetworkInterfaces": [
+          {
+            "AssociatePublicIpAddress": {
+              "Fn::If": [
+                "AssignPublicIp",
+                "true",
+                "false"
+              ]
+            },
+            "DeviceIndex": "0",
+            "GroupSet": {
+              "Ref": "SecurityGroupIds"
+            },
+            "SubnetId": {
+              "Ref": "SubnetIds"
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#cloud-config\n",
+                "\n",
+                "system_info:\n",
+                "  default_user:\n",
+                "    name: ",
+                {
+                  "Ref": "ProvisionUser"
+                },
+                "\n",
+                "\n",
+                "hostname: ",
+                {
+                  "Ref": "Hostname"
+                },
+                "\n",
+                "fqdn: ",
+                {
+                  "Ref": "Hostname"
+                },
+                ".",
+                {
+                  "Ref": "Domainname"
+                },
+                "\n",
+                "manage_etc_hosts: true\n",
+                "\n",
+                {
+                  "Fn::If": [
+                    "CreateBackupVolume",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "bootcmd:\n",
+                          "  - cloud-init-per instance mkfs-bkupvolume mkfs -t ext4 ",
+                          { "Ref": "BackupVolumeDevice" },
+                          "\n",
+                          "\n",
+                          "mounts:\n",
+                          "  - [ ",
+                          "\"",
+                          { "Ref": "BackupVolumeDevice" },
+                          "\", ",
+                          "\"",
+                          { "Ref": "BackupVolumeMountPath" },
+                          "\", ",
+                          "\"auto\" ",
+                          "]\n"
+                        ]
+                      ]
+                    },
+                    ""
+                  ]
+                },
+                "\n",
+                "runcmd:\n",
+                "  - |-\n",
+                "      # Exports used by helper scripts\n",
+                "      export JIRADC_FQDN=\"",
+                       { "Ref": "JiraProxyFqdn" },
+                       "\"\n",
+                "      export JIRADC_SOFTWARE_URL=\"",
+                       { "Ref": "JiraInstallBinUrl" },
+                       "\"\n",
+                "      export JIRADC_SHARE_PATH=\"",
+                       { "Ref": "JiraHomeSharePath" },
+                       "\"\n",
+                "      export JIRADC_SHARE_TYPE=\"",
+                       { "Ref": "JiraHomeShareType" },
+                       "\"\n",
+                "      export JIRADC_PGSQL_HOST=\"",
+                       { "Ref": "JiraPgsqlHost" },
+                       "\"\n",
+                "      export JIRADC_PGSQL_INST=\"",
+                       { "Ref": "JiraPgsqlInst" },
+                       "\"\n",
+                "      export JIRADC_PGSQL_MANAGER=\"",
+                       { "Ref": "JiraPgsqlManager" },
+                       "\"\n",
+                "      export JIRADC_PGSQL_PASSWORD=\"",
+                       { "Ref": "JiraPgsqlPassword" },
+                       "\"\n",
+                "      \n",
+                "      # Helper function\n",
+                "      function err_exit {\n",
+                "         echo \"${1}\"\n",
+                "         logger -p kern.crit -t UserData \"${1}\"\n",
+                "         /opt/aws/bin/cfn-signal -e 1 --stack ",
+                            { "Ref": "AWS::StackName" },
+                          " --resource JiradcEC2\n",
+                "         exit 1\n",
+                "      }\n",
+                "      \n",
+                "      # Install RPMs needed by the cfn-tools.\n",
+                "      yum --enablerepo=",
+                       { "Ref": "EpelRepo" },
+                       " install -y ",
+                       { "Ref": "PyStache" },
+                       " ",
+                       { "Ref": "PipRpm" },
+                       " || err_exit 'Could not install Cfn dependencies.'\n",
+                "      \n",
+                "      # Export cert bundle ENVs\n",
+                "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      \n",
+                "      # Initialize the Cfn subsystems\n",
+                "      /opt/aws/bin/cfn-init -s ",
+                       { "Ref": "AWS::StackName" },
+                       " -r JiradcEC2 ",
+                       " --region ",
+                       { "Ref": "AWS::Region" },
+                       " && echo 'Successfully ran cfn-init'",
+                       " || err_exit 'Failed to run cfn-init' > /dev/stderr\n",
+                "      \n",
+                "      env | grep JIRADC_ > /etc/cfn/Jira.envs\n",
+                "      \n",
+                "      # Do pip-stuff\n",
+                "      pip install -i ",
+                       { "Ref": "PipIndexFips" },
+                       " --upgrade pip\n",
+                "      \n",
+                "      # Add admin SSH keys to the ",
+                       { "Ref": "ProvisionUser" },
+                       " account\n",
+                "      export PROVHOME=/home/",
+                       { "Ref": "ProvisionUser" },
+                       "\n",
+                "      if [[ ! -d ${PROVHOME}/.ssh ]]\n",
+                "      then\n",
+                "         printf \"Waiting for ${PROVHOME}/.ssh to be created\"\n",
+                "         while [[ ! -d ${PROVHOME}/.ssh ]]\n",
+                "         do\n",
+                "            printf \".\"\n",
+                "            sleep 5\n",
+                "         done\n",
+                "         echo \"Found.\"\n",
+                "      fi\n",
+                "      \n",
+                "      curl -skL ",
+                       { "Ref": "AdminPubkeyURL" },
+                       " >> ${PROVHOME}/.ssh/authorized_keys ||",
+                       " err_exit 'Failed to install admin-users keys'\n",
+                "      \n",
+                "      curl -skL ",
+                       { "Ref": "JiraInstallerUrl" },
+                       " | bash - ||",
+                       " err_exit 'Install script experienced a failure.'\n",
+                "      \n",
+                "      # Install watchmaker\n",
+                "      setenforce 0 || err_exit 'Failed to disarm SEL.'\n",
+                "      PYPI_URL=\"",
+                       { "Ref": "PipIndexFips" },
+                       "\"\n",
+                "      pip install --index-url=\"$PYPI_URL\" --upgrade pip setuptools watchmaker\n",
+                "      \n",
+                "      # Run watchmaker\n",
+                "      watchmaker --log-level debug --log-dir=/var/log/watchmaker -n || err_exit 'Watchmaker did not exit with success-code.'\n",
+                "      \n",
+                "      # Signal Cfn that we're good\n",
+                "      /opt/aws/bin/cfn-signal -e 0 --stack ",
+                       { "Ref": "AWS::StackName" },
+                       " --resource JiradcEC2 --url ",
+                       { "Ref": "CfnEndpointUrl" },
+                       "\n",
+                "      \n",
+                "      init 6\n"
+              ]
+            ]
+          }
+        }
+      },
+      "Type": "AWS::EC2::Instance"
+    }
+  }
+}
