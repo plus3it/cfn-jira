@@ -343,7 +343,6 @@
             "launch": [
               "setup",
               "admkey-install",
-              "jira-tmplt-fetch",
               "osprep-launch",
               "watchmaker-install",
               "watchmaker-launch",
@@ -407,25 +406,17 @@
               }
             }
           },
-          "jira-tmplt-fetch": {
-            "commands": {
-              "template-fetch": {
-                "command": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "aws s3 cp s3://",
-                      { "Ref": "ConfigBucketPath" },
-                      " /etc/cfn/jira.rb.tmplt"
-                    ]
-                  ]
-                }
-              }
-            }
-          },
           "osprep-launch": {
+            "files": {
+              "/etc/cfn/scripts/osprep.sh": {
+                "group": "root",
+                "mode": "000700",
+                "owner": "root",
+                "source": { "Ref": "JiraPrepScript" }
+              }
+            },
             "commands": {
-              "10-osprep-launch": {
+              "1-osprep-launch": {
                 "command": "bash -xe /etc/cfn/scripts/osprep.sh"
               }
             }
@@ -552,12 +543,6 @@
                 "group": "root",
                 "mode": "000400",
                 "owner": "root"
-              },
-              "/etc/cfn/scripts/osprep.sh": {
-                "group": "root",
-                "mode": "000700",
-                "owner": "root",
-                "source": { "Ref": "JiraPrepScript" }
               },
               "/etc/cfn/scripts/watchmaker-install.sh": {
                 "content": {
@@ -803,12 +788,42 @@
                 "\n",
                 "\n",
                 "hostname: ",
-                { "Ref": "ServerHostname" },
+                { "Ref": "Hostname" },
                 "\n",
                 "fqdn: ",
-                { "Ref": "ServerHostname" },
+                { "Ref": "Hostname" },
                 ".",
-                { "Ref": "DnsSuffix" },
+                { "Ref": "Domainname" },
+                "\n",
+                "\n",
+                {
+                  "Fn::If": [
+                    "CreateBackupVolume",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "bootcmd:\n",
+                          "  - cloud-init-per instance mkfs-bkupvolume mkfs -t ext4 ",
+                          { "Ref": "BackupVolumeDevice" },
+                          "\n",
+                          "\n",
+                          "mounts:\n",
+                          "  - [ ",
+                          "\"",
+                          { "Ref": "BackupVolumeDevice" },
+                          "\", ",
+                          "\"",
+                          { "Ref": "BackupVolumeMountPath" },
+                          "\", ",
+                          "\"auto\" ",
+                          "]\n"
+                        ]
+                      ]
+                    },
+                    ""
+                  ]
+                },
                 "\n",
                 "runcmd:\n",
                 "  - |\n",
@@ -897,17 +912,7 @@
                 { "Ref": "AWS::Region" },
                 ";",
                 " exit 1",
-                " )\n\n",
-                "    ## # Install admin-groups keys to provisioning user\n",
-                "    ## curl -skL ",
-                { "Ref": "AdminPubkeyURL" },
-                " -o /tmp/admin.keys || err_exit ",
-                "'Could not download admin keys'\n",
-                "    ## cat /tmp/admin.keys >> /home/",
-                { "Ref": "ProvisionUser" },
-                "/.ssh/authorized_keys || err_exit ",
-                "'Could not add admin keys'\n",
-                "    \n"
+                " )\n\n"
               ]
             ]
           }
