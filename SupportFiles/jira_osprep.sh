@@ -23,17 +23,7 @@ JIRASVCS=(
    )
 HSHAREPATH="${JIRADC_SHARE_PATH:-UNDEF}"
 HSHARETYPE="${JIRADC_SHARE_TYPE:-UNDEF}"
-JIRADCURL=${JIRADC_SOFTWARE_URL:-UNDEF}
 JIRADCHOME="/var/atlassian"
-DBCFGDIR="${JIRADCHOME}/application-data/jira"
-DBCFGFILE="${DBCFGDIR}/dbconfig.xml"
-JIRAINSTBIN="/root/atlassian-jira-software-x64.bin"
-PGSQLHOST="${JIRADC_PGSQL_HOST:-UNDEF}"
-PGSQLTABL="${JIRADC_PGSQL_INST:-UNDEF}"
-PGSQLMANAGR="${JIRADC_PGSQL_MANAGER:-UNDEF}"
-PGSQLPASSWD="${JIRADC_PGSQL_PASSWORD:-UNDEF}"
-PROXYFQDN="${JIRADC_FQDN:-UNDEF}"
-RESPFILE="/root/response.vars"
 RPMDEPLST=(
            postgresql
            postgresql-jdbc
@@ -95,7 +85,8 @@ function ValidShare {
 ##
 ## Open firewall ports
 function FwStuff {
-   local SELMODE=$(getenforce)
+   local SELMODE
+     SELMODE=$(getenforce)
 
    # Relax SEL as necessary
    if [[ ${SELMODE} = Enforcing ]]
@@ -122,9 +113,10 @@ function FwStuff {
 
    for SVCPORT in "${JIRAPORTS[@]}"
    do
-      printf "Adding port ${SVCPORT} to Jira's firewalld service-definition... "
+      printf "Adding port %s to Jira's firewalld service-definition... " \
+        "${SVCPORT}"
       firewall-cmd --permanent --service=jira --add-port="${SVCPORT}"/tcp || \
-        err_exit 'Failed to add firewalld exception for ${SVCPORT}/tcp'
+        err_exit "Failed to add firewalld exception for ${SVCPORT}/tcp"
    done
 
    if [[ $(systemctl is-active firewalld) == active ]]
@@ -134,7 +126,7 @@ function FwStuff {
    
    for SVCNAME in "${JIRASVCS[@]}"
    do
-      printf "Adding ${SVCNAME} service to firewalld... "
+      printf "Adding %s service to firewalld... " "${SVCNAME}"
       firewall-cmd --permanent --add-service ${SVCNAME} || \
         err_exit "Failed adding ${SVCNAME} service to firewalld"
    done

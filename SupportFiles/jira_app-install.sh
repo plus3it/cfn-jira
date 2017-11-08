@@ -12,12 +12,6 @@ do
   # shellcheck disable=SC2163
   export "${ENV}"
 done < /etc/cfn/Jira.envs
-FWPORTS=(
-         80
-         443
-         8005
-         8080
-        )
 JIRADCURL=${JIRADC_SOFTWARE_URL:-UNDEF}
 JIRADCHOME="/var/atlassian"
 DBCFGDIR="${JIRADCHOME}/application-data/jira"
@@ -158,8 +152,8 @@ done
 
 echo " Go!"
 
-# shellcheck disable=SC1004
 echo "Adding 'proxyName' parm to Jira config..."
+# shellcheck disable=SC1004
 sed -i '/Connector port="8080"/a \
                    proxyName="'${PROXYFQDN}'" proxyPort="443" scheme="https"' "${SERVERXML}" \
   || err_exit "Failed to add proxy-def to server.xml"
