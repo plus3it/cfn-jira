@@ -480,7 +480,7 @@
           "JiraProxyFqdn": { "Ref": "JiraProxyFqdn" },
           "KeyPairName": { "Ref": "Ec2ProvKey" },
           "NoPublicIp": "true",
-          "NoReboot": "true",
+          "NoReboot": "false",
           "PipIndexFips": { "Ref": "PipIndexFips" },
           "PipRpm": { "Ref": "PipRpm" },
           "ProvisionUser": { "Ref": "ProvisionUser" },
@@ -495,7 +495,7 @@
               ]
             ]
           },
-          "SubnetIds": { "Ref": "Ec2Subnet" }
+          "SubnetId": { "Ref": "Ec2Subnet" }
         },
         "TemplateURL": { "Ref": "Ec2TemplateUri" }
       },

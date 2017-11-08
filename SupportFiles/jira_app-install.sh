@@ -29,6 +29,7 @@ PGSQLMANAGR="${JIRADC_PGSQL_MANAGER:-UNDEF}"
 PGSQLPASSWD="${JIRADC_PGSQL_PASSWORD:-UNDEF}"
 PROXYFQDN="${JIRADC_FQDN:-UNDEF}"
 RESPFILE="/root/response.vars"
+SERVERXML="/opt/atlassian/jira/conf/server.xml"
 
 
 ##
@@ -53,6 +54,13 @@ function err_exit {
 ####
 ## Main
 ####
+
+# Dial-back SEL if necessary
+SELMODE="$(/sbin/getenforce)"
+if [[ ${SELMODE} == Enforcing ]]
+then
+   setenforce 0
+fi
 
 # Create the automated-response file used for
 # unattended install of Jira Datacenter Software
@@ -140,10 +148,21 @@ echo "Running Jira unattended install... "
    err_exit "Unattended install experienced errors"
 
 # Massage Jira's listener
-service jira stop 
+service jira stop || echo "Jira did not need to be stopped..."
+
+printf "Waiting for creation of %s " "${SERVERXML}"
+while [[ ! -e ${SERVERXML} ]]
+do
+   printf "."
+done
+
+echo " Go!"
+
 # shellcheck disable=SC1004
+echo "Adding 'proxyName' parm to Jira config..."
 sed -i '/Connector port="8080"/a \
-                   proxyName="'${PROXYFQDN}'" proxyPort="443" scheme="https"' /opt/atlassian/jira/conf/server.xml || err_exit "Failed to add proxy-def to server.xml"
+                   proxyName="'${PROXYFQDN}'" proxyPort="443" scheme="https"' "${SERVERXML}" \
+  || err_exit "Failed to add proxy-def to server.xml"
 
 # Start Jira (via systemd)
 systemctl daemon-reload
@@ -161,3 +180,6 @@ then
    systemctl --quiet restart jira && echo "Success." || \
      err_exit "Failed to start Jira systemd service"
 fi
+
+# Return SEL-mode to pre-script state
+setenforce "${SELMODE}"
