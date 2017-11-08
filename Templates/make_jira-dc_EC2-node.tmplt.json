@@ -11,9 +11,9 @@
         { "Fn::Equals": [ { "Ref": "NoPublicIp" }, "true" ] }
       ]
     },
-    "CreateAppVolume": {
+    "CreateBackupVolume": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "AppVolumeDevice" }, "" ] }
+        { "Fn::Equals": [ { "Ref": "BackupVolumeDevice" }, "" ] }
       ]
     },
     "Reboot": {
@@ -136,6 +136,11 @@
       "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
       "Default": "jiradc",
       "Description": "Node-name for Jira's hostname and DNS record",
+      "Type": "String"
+    },
+    "InstanceRole": {
+      "Default": "",
+      "Description": "IAM instance role to apply to the instance(s)",
       "Type": "String"
     },
     "InstanceType": {
@@ -271,9 +276,26 @@
       "Description": "List of security groups to apply to the instance(s)",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
-    "SubnetIds": {
+    "SubnetId": {
       "Description": "Subnet to associate to the Instance",
       "Type": "AWS::EC2::Subnet::Id"
+    },
+    "WatchmakerConfig":{
+      "AllowedPattern": "^$|^http[s]?://.*$",
+      "Default": "",
+      "Description": "(Optional) URL to a Watchmaker config file",
+      "Type": "String"
+    },
+    "WatchmakerEnvironment": {
+      "AllowedValues": [
+        "",
+        "dev",
+        "test",
+        "prod"
+      ],
+      "Default": "",
+      "Description": "Environment in which the instance is being deployed",
+      "Type": "String"
     }
   },
   "Resources": {
@@ -342,6 +364,29 @@
                 "mode": "000700",
                 "owner": "root",
                 "source": { "Ref": "JiraAppPrepUrl" }
+              },
+              "/etc/systemd/system/jira.service": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[Unit]\n",
+                      "Description=JIRA Service\n",
+                      "After=network.target iptables.service firewalld.service firewalld.service httpd.service\n",
+                      "\n",
+                      "[Service]\n",
+                      "Type=forking\n",
+                      "User=jira\n",
+                      "ExecStartPre=/bin/sleep 15\n",
+                      "ExecStart=/opt/atlassian/jira/bin/start-jira.sh\n",
+                      "ExecStop=/opt/atlassian/jira/bin/stop-jira.sh\n",
+                      "ExecReload=/opt/atlassian/jira/bin/jira.sh | sleep 60 | /opt/atlassian/jira/bin/jira.sh\n",
+                      "\n",
+                      "[Install]\n",
+                      "WantedBy=multi-user.target\n"
+                    ]
+                  ]
+                }
               }
             }
           },
@@ -418,7 +463,7 @@
                 "group": "root",
                 "mode": "000700",
                 "owner": "root",
-                "source": { "Ref": "JiraPrepScript" }
+                "source": { "Ref": "JiraOsPrepUrl" }
               }
             },
             "commands": {
@@ -441,7 +486,6 @@
                   "Fn::Join": [
                     "",
                     [
-                      "# Exports used by helper scripts\n",
                       "JIRADC_FQDN=",
                       { "Ref": "JiraProxyFqdn" },
                       "\n",
@@ -730,13 +774,13 @@
           },
           {
             "Fn::If": [
-              "CreateAppVolume",
+              "CreateBackupVolume",
               {
-                "DeviceName": { "Ref": "AppVolumeDevice" },
+                "DeviceName": { "Ref": "BackupVolumeDevice" },
                 "Ebs": {
                   "DeleteOnTermination": "true",
-                  "VolumeSize": { "Ref": "AppVolumeSize" },
-                  "VolumeType": { "Ref": "AppVolumeType" }
+                  "VolumeSize": { "Ref": "BackupVolumeSize" },
+                  "VolumeType": { "Ref": "BackupVolumeType" }
                 }
               },
               { "Ref": "AWS::NoValue" }

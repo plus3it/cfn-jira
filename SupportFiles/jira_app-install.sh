@@ -144,4 +144,20 @@ service jira stop
 # shellcheck disable=SC1004
 sed -i '/Connector port="8080"/a \
                    proxyName="'${PROXYFQDN}'" proxyPort="443" scheme="https"' /opt/atlassian/jira/conf/server.xml || err_exit "Failed to add proxy-def to server.xml"
-service jira start || err_exit "Failed to start Jira service"
+
+# Start Jira (via systemd)
+systemctl daemon-reload
+
+if [[ $(systemctl is-enabled jira) == disabled ]]
+then
+   printf 'Enabling Jira systemd service... '
+   systemctl --quiet enable jira && echo "Success." || \
+     err_exit "Failed to enable Jira systemd service"
+fi
+
+if [[ $(systemctl is-active jira) == inactive ]]
+then
+   printf 'Starting Jira systemd service... '
+   systemctl --quiet restart jira && echo "Success." || \
+     err_exit "Failed to start Jira systemd service"
+fi
