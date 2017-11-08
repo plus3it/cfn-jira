@@ -23,7 +23,7 @@
     },
     "UseCfnAppInstaller": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "JiraConfScript" }, "" ] }
+        { "Fn::Equals": [ { "Ref": "JiraAppPrepUrl" }, "" ] }
       ]
     },
     "UseCfnUrl": {
@@ -171,6 +171,18 @@
       "Description": "Amazon EC2 instance type",
       "Type": "String"
     },
+    "JiraAppPrepUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter EC2 application installer/configuration script.",
+      "Type": "String"
+    },
+    "JiraBinaryInstallerUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter binary-installer file.",
+      "Type": "String"
+    },
     "JiraHomeSharePath": {
       "Default": "",
       "Description": "Share-path of shared Jira-home.",
@@ -184,16 +196,10 @@
       "Description": "Type of network share hosting persisted Jira-home content.",
       "Type": "String"
     },
-    "JiraInstallBinUrl": {
+    "JiraOsPrepUrl": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Default": "",
-      "Description": "URL to the Jira Datacenter binary-installer file.",
-      "Type": "String"
-    },
-    "JiraInstallerUrl": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Default": "",
-      "Description": "URL to the Jira Datacenter EC2 provisioning-script.",
+      "Description": "URL to the Jira Datacenter EC2 OS-preparationscript.",
       "Type": "String"
     },
     "JiraPgsqlHost": {
@@ -327,15 +333,15 @@
           "app-install": {
             "commands": {
               "10-app-install": {
-                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
+                "command": "bash -xe /etc/cfn/scripts/jiraprep.sh"
               }
             },
             "files": {
-              "/etc/cfn/scripts/glprep.sh": {
+              "/etc/cfn/scripts/jiraprep.sh": {
                 "group": "root",
                 "mode": "000700",
                 "owner": "root",
-                "source": { "Ref": "JiraConfScript" }
+                "source": { "Ref": "JiraAppPrepUrl" }
               }
             }
           },
@@ -440,7 +446,7 @@
                       { "Ref": "JiraProxyFqdn" },
                       "\n",
                       "JIRADC_SOFTWARE_URL=",
-                      { "Ref": "JiraInstallBinUrl" },
+                      { "Ref": "JiraBinaryInstallerUrl" },
                       "\n",
                       "JIRADC_SHARE_PATH=",
                       { "Ref": "JiraHomeSharePath" },
