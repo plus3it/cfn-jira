@@ -221,6 +221,7 @@
     },
     "JiraPgsqlPassword": {
       "Description": "Manager-password  of the primary PostGreSQL instance.",
+      "NoEcho": "True",
       "Type": "String"
     },
     "JiraProxyFqdn": {

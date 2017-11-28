@@ -180,6 +180,7 @@
     },
     "DbAdminPass": {
       "Description": "Password of the Jira master database-user.",
+      "NoEcho": "True",
       "Type": "String"
     },
     "DbDataSize": {
