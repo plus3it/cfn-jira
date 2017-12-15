@@ -458,6 +458,9 @@
           "Domainname": { "Ref": "Ec2Domain" },
           "EpelRepo": { "Ref": "EpelRepo" },
           "Hostname": { "Ref": "Ec2Hostname" },
+          "InstanceRole": {
+            "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRoleProfile" ]
+          },
           "InstanceType": { "Ref": "InstanceType" },
           "JiraAppPrepUrl": { "Ref": "JiraAppPrepUrl" },
           "JiraBinaryInstallerUrl": { "Ref": "JiraBinaryInstallerUrl" },
