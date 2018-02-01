@@ -3,7 +3,7 @@
   "Conditions": {
     "AssignInstanceRole": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "InstanceRole" }, "" ] }
+        { "Fn::Equals": [ { "Ref": "InstanceRoleName" }, "" ] }
       ]
     },
     "AssignPublicIp": {
@@ -12,8 +12,11 @@
       ]
     },
     "CreateBackupVolume": {
+      "Fn::Equals": [ { "Ref": "BackupVolumeDevice" }, "true" ]
+    },
+    "InstallUpdates": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "BackupVolumeDevice" }, "" ] }
+        { "Fn::Equals": [ { "Ref": "NoUpdates" }, "true" ] }
       ]
     },
     "NotGenFive": {
@@ -22,9 +25,15 @@
           "Fn::Or": [
             {
               "Fn::Equals": [
-                { "Fn::Select": [
+                {
+                  "Fn::Select": [
                     "0",
-                    { "Fn::Split": [ ".", { "Ref": "InstanceType" } ] }
+                    {
+                      "Fn::Split": [
+                        ".",
+                        { "Ref": "InstanceType" }
+                      ]
+                    }
                   ]
                 },
                 "c5"
@@ -32,9 +41,15 @@
             },
             {
               "Fn::Equals": [
-                { "Fn::Select": [
+                {
+                  "Fn::Select": [
                     "0",
-                    { "Fn::Split": [ ".", { "Ref": "InstanceType" } ] }
+                    {
+                      "Fn::Split": [
+                        ".",
+                        { "Ref": "InstanceType" }
+                      ]
+                    }
                   ]
                 },
                 "m5"
@@ -56,11 +71,22 @@
     },
     "UseCfnUrl": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] } ]
+        { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] }
+      ]
     },
     "UseEnvironment": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "WatchmakerEnvironment" }, "" ] }
+      ]
+    },
+    "UseKeyPair": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "KeyPairName" }, "" ] }
+      ]
+    },
+    "UseS3Source": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerS3Source" }, "false" ] }
       ]
     },
     "UseWamConfig": {
@@ -69,7 +95,7 @@
       ]
     }
   },
-  "Description": "This template deploys a STIG-hardened Enterprise Linux 7 instance to host the Jira service.",
+  "Description": "This template deploys an AutoScale-managed, STIG-hardened Enterprise Linux 7 instance to host the Jira service.",
   "Mappings": {
     "InstanceTypeCapabilities": {
       "IsGenFive": {
@@ -83,12 +109,94 @@
     }
   },
   "Metadata": {
-    "AWS::CloudFormation::Interface": {}
-  },
-  "Outputs": {
-    "JiraInstanceId": {
-      "Description": "Instance ID",
-      "Value": { "Ref": "JiraHost" }
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "EC2 Instance Configuration"
+          },
+          "Parameters": [
+            "Hostname",
+            "Domainname",
+            "AmiId",
+            "InstanceType",
+            "DesiredCapacity",
+            "MinCapacity",
+            "MaxCapacity",
+            "ProvisionUser",
+            "KeyPairName",
+            "AdminPubkeyURL",
+            "SubnetIds",
+            "NoPublicIp",
+            "NoReboot",
+            "NoUpdates",
+            "SecurityGroupIds",
+            "InstanceRoleName",
+            "InstanceRoleProfile"
+          ]
+        },
+        {
+          "Label": {
+            "default": "EC2 Watchmaker Configuration"
+          },
+          "Parameters": [
+            "EpelRepo",
+            "PipRpm",
+            "PyStache",
+            "PipIndexFips",
+            "WatchmakerConfig",
+            "WatchmakerEnvironment",
+            "WatchmakerS3Source"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Backup Configuration"
+          },
+          "Parameters": [
+            "BackupVolumeDevice",
+            "BackupVolumeMountPath",
+            "BackupVolumeSize",
+            "BackupVolumeType",
+            "BackupBucket"
+          ]
+        },
+        {
+          "Label": {
+            "default": "CloudFormation Configuration"
+          },
+          "Parameters": [
+            "CfnEndpointUrl",
+            "ToggleCfnInitUpdate",
+            "ToggleNewInstances"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Jira Configuration"
+          },
+          "Parameters": [
+            "JiraProxyFqdn",
+            "JiraOsPrepUrl",
+            "JiraAppPrepUrl",
+            "JiraBinaryInstallPkg",
+            "JiraPgsqlHost",
+            "JiraPgsqlInst",
+            "JiraPgsqlManager",
+            "JiraPgsqlPassword",
+            "JiraHomeSharePath",
+            "JiraHomeShareType"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "ToggleCfnInitUpdate": {
+          "default": "Force Cfn Init Update"
+        },
+        "ToggleNewInstances": {
+          "default": "Force New Instances"
+        }
+      }
     }
   },
   "Parameters": {
@@ -124,10 +232,10 @@
     },
     "BackupVolumeSize": {
       "ConstraintDescription": "Must be between 1GB and 16384GB.",
-      "Default": "10",
+      "Default": "1",
       "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
       "MaxValue": "16384",
-      "MinValue": "10",
+      "MinValue": "1",
       "Type": "Number"
     },
     "BackupVolumeType": {
@@ -143,14 +251,23 @@
       "Type": "String"
     },
     "CfnEndpointUrl": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Default": "",
-      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "AllowedPattern": "^$|^http[s]?://.*$",
+      "Default": "https://cloudformation.us-east-1.amazonaws.com",
+      "Description": "(Optional) URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
       "Type": "String"
+    },
+    "DesiredCapacity": {
+      "Default": "1",
+      "Description": "Desired number of instances in the Autoscaling Group",
+      "Type": "Number"
     },
     "Domainname": {
       "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
       "Description": "Suffix for Jira's hostname and DNS record",
+      "Type": "String"
+    },
+    "ElbArn": {
+      "Description": "ARN of the ELBv2 TargetGroup to attach scaling-group to.",
       "Type": "String"
     },
     "EpelRepo": {
@@ -166,9 +283,14 @@
       "Description": "Node-name for Jira's hostname and DNS record",
       "Type": "String"
     },
-    "InstanceRole": {
+    "InstanceRoleName": {
       "Default": "",
-      "Description": "IAM instance role to apply to the instance(s)",
+      "Description": "(Optional) IAM instance-role name used by cfn-init to authenticate to the CloudFormation endpoint.",
+      "Type": "String"
+    },
+    "InstanceRoleProfile": {
+      "Default": "",
+      "Description": "(Optional) IAM instance-role profile to apply to the instance(s)",
       "Type": "String"
     },
     "InstanceType": {
@@ -178,34 +300,16 @@
         "t2.medium",
         "t2.large",
         "t2.xlarge",
-        "t2.2xlarge",
-        "m5.large",
-        "m5.xlarge",
-        "m5.2xlarge",
-        "m5.4xlarge",
-        "m4.large",
-        "m4.xlarge",
-        "m4.2xlarge",
-        "m4.4xlarge",
-        "m3.medium",
-        "m3.large",
-        "m3.xlarge",
-        "m3.2xlarge",
-        "m3.4xlarge",
-        "c5.large",
-        "c5.xlarge",
-        "c5.2xlarge",
-        "c5.4xlarge",
         "c4.large",
         "c4.xlarge",
-        "c4.2xlarge",
-        "c4.4xlarge",
-        "c3.large",
-        "c3.xlarge",
-        "c3.2xlarge",
-        "c3.4xlarge"
+        "m4.large",
+        "m4.xlarge",
+        "c5.large",
+        "c5.xlarge",
+        "m5.large",
+        "m5.xlarge"
       ],
-      "Default": "t2.large",
+      "Default": "t2.micro",
       "Description": "Amazon EC2 instance type",
       "Type": "String"
     },
@@ -215,7 +319,7 @@
       "Description": "URL to the Jira Datacenter EC2 application installer/configuration script.",
       "Type": "String"
     },
-    "JiraBinaryInstallerUrl": {
+    "JiraBinaryInstallPkg": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Default": "",
       "Description": "URL to the Jira Datacenter binary-installer file.",
@@ -262,8 +366,18 @@
       "Type": "String"
     },
     "KeyPairName": {
-      "Description": "Public/private key pairs allowing the provisioning-user to securely connect to the instance after it launches.",
-      "Type": "AWS::EC2::KeyPair::KeyName"
+      "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
+      "Type": "String"
+    },
+    "MaxCapacity": {
+      "Default": "2",
+      "Description": "Maximum number of instances in the Autoscaling Group",
+      "Type": "Number"
+    },
+    "MinCapacity": {
+      "Default": "1",
+      "Description": "Minimum number of instances in the Autoscaling Group",
+      "Type": "Number"
     },
     "NoPublicIp": {
       "AllowedValues": [
@@ -281,6 +395,15 @@
       ],
       "Default": "false",
       "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
+      "Type": "String"
+    },
+    "NoUpdates": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "false",
+      "Description": "Controls whether to run yum update during a stack update (on the initial instance launch, Watchmaker _always_ installs updates)",
       "Type": "String"
     },
     "PipIndexFips": {
@@ -306,15 +429,39 @@
       "Description": "Name of preferred pystache RPM.",
       "Type": "String"
     },
+    "PipIndexFips": {
+      "AllowedPattern": "^http[s]?://.*$",
+      "Default": "https://pypi.org/simple",
+      "Description": "URL to the PyPi Index",
+      "Type": "String"
+    },
     "SecurityGroupIds": {
       "Description": "List of security groups to apply to the instance(s)",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
-    "SubnetId": {
-      "Description": "Subnet to associate to the Instance",
-      "Type": "AWS::EC2::Subnet::Id"
+    "SubnetIds": {
+      "Description": "List of subnets to associate to the Autoscaling Group",
+      "Type": "List<AWS::EC2::Subnet::Id>"
     },
-    "WatchmakerConfig":{
+    "ToggleCfnInitUpdate": {
+      "AllowedValues": [
+        "A",
+        "B"
+      ],
+      "Default": "A",
+      "Description": "A/B toggle that forces a change to instance metadata, triggering the cfn-init update sequence",
+      "Type": "String"
+    },
+    "ToggleNewInstances": {
+      "AllowedValues": [
+        "A",
+        "B"
+      ],
+      "Default": "A",
+      "Description": "A/B toggle that forces a change to instance userdata, triggering new instances via the Autoscale update policy",
+      "Type": "String"
+    },
+    "WatchmakerConfig": {
       "AllowedPattern": "^$|^http[s]?://.*$",
       "Default": "",
       "Description": "(Optional) URL to a Watchmaker config file",
@@ -330,33 +477,69 @@
       "Default": "",
       "Description": "Environment in which the instance is being deployed",
       "Type": "String"
+    },
+    "WatchmakerS3Source": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "false",
+      "Description": "Flag that tells watchmaker to use its instance role to retrieve watchmaker content from S3",
+      "Type": "String"
     }
   },
   "Resources": {
-    "JiraHost": {
+    "JiraASG": {
       "CreationPolicy": {
         "ResourceSignal": {
-          "Count": "1",
+          "Count": { "Ref": "DesiredCapacity" },
           "Timeout": "PT30M"
         }
       },
-      "Metadata": {
-        "AWS::CloudFormation::Authentication": {
-          "Ec2IamRole": {
-            "roleName": { "Ref": "InstanceRole" },
-            "type": "S3"
+      "Properties": {
+        "DesiredCapacity": { "Ref": "DesiredCapacity" },
+        "LaunchConfigurationName": { "Ref": "JiraLC" },
+        "TargetGroupARNs": [ { "Ref" : "ElbArn" } ],
+        "MaxSize": { "Ref": "MaxCapacity" },
+        "MinSize": { "Ref": "MinCapacity" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "PropagateAtLaunch": "true",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  { "Ref": "AWS::StackName" }
+                ]
+              ]
+            }
           }
-        },
+        ],
+        "VPCZoneIdentifier": { "Ref": "SubnetIds" }
+      },
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "MaxBatchSize": "2",
+          "MinInstancesInService": "1",
+          "PauseTime": "PT30M",
+          "WaitOnResourceSignals": "true"
+        }
+      }
+    },
+    "JiraLC": {
+      "Metadata": {
         "AWS::CloudFormation::Init": {
           "admkey-install": {
             "files": {
-              "/tmp/adminkeys.pub": {
+              "/etc/cfn/files/adminkeys.pub": {
                 "source": { "Ref": "AdminPubkeyURL" },
                 "group": "root",
                 "mode": "000600",
                 "owner": "root"
               },
-              "/tmp/admkey.sh": {
+              "/etc/cfn/scripts/admkey.sh": {
                 "content": {
                   "Fn::Join": [
                     "",
@@ -370,7 +553,8 @@
                       { "Ref": "ProvisionUser" },
                       " -g ",
                       { "Ref": "ProvisionUser" },
-                      " /tmp/adminkeys.pub ${PROVHOME}/.ssh/authorized_keys\n",
+                      " /etc/cfn/files/adminkeys.pub",
+                      " ${PROVHOME}/.ssh/authorized_keys\n",
                       "\n"
                     ]
                   ]
@@ -382,7 +566,7 @@
             },
             "commands": {
               "1-admkey-install": {
-                "command": "bash -xe /tmp/admkey.sh"
+                "command": "bash -xe /etc/cfn/scripts/admkey.sh"
               }
             }
           },
@@ -406,7 +590,8 @@
                     [
                       "[Unit]\n",
                       "Description=JIRA Service\n",
-                      "After=network.target iptables.service firewalld.service firewalld.service httpd.service\n",
+                      "After=network.target iptables.service",
+                      " firewalld.service firewalld.service httpd.service\n",
                       "\n",
                       "[Service]\n",
                       "Type=forking\n",
@@ -414,16 +599,15 @@
                       "ExecStartPre=/bin/sleep 15\n",
                       "ExecStart=/opt/atlassian/jira/bin/start-jira.sh\n",
                       "ExecStop=/opt/atlassian/jira/bin/stop-jira.sh\n",
-                      "ExecReload=/opt/atlassian/jira/bin/jira.sh | sleep 60 | /opt/atlassian/jira/bin/jira.sh\n",
-                      "TimeoutStopSec=10\n",
+                      "ExecReload=/opt/atlassian/jira/bin/jira.sh",
+                      " | sleep 60 | /opt/atlassian/jira/bin/jira.sh\n",
                       "\n",
                       "[Install]\n",
                       "WantedBy=multi-user.target\n"
                     ]
                   ]
                 }
-              }
-            },
+              },
               "/etc/cron.d/jira-data-backup": {
                 "content": {
                   "Fn::Join": [
@@ -452,15 +636,45 @@
                 "group": "root",
                 "mode": "000700",
                 "owner": "root"
+              }
             }
           },
           "configSets": {
             "launch": [
               "setup",
               "admkey-install",
-              "osprep-launch",
               "watchmaker-install",
               "watchmaker-launch",
+              "osprep-launch",
+              {
+                "Fn::If": [
+                  "UseCfnAppInstaller",
+                  "app-install",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
+              "finalize",
+              {
+                "Fn::If": [
+                  "Reboot",
+                  "reboot",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              }
+            ],
+            "update": [
+              "setup",
+              "admkey-install",
+              {
+                "Fn::If": [
+                  "InstallUpdates",
+                  "install-updates",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
+              "watchmaker-install",
+              "watchmaker-update",
+              "osprep-launch",
               {
                 "Fn::If": [
                   "UseCfnAppInstaller",
@@ -488,7 +702,22 @@
                       "/opt/aws/bin/cfn-signal -e 0",
                       " --stack ",
                       { "Ref": "AWS::StackName" },
-                      " --resource JiraHost",
+                      " --resource JiraASG",
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --role ",
+                                { "Ref": "InstanceRoleName" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
                       {
                         "Fn::If": [
                           "UseCfnUrl",
@@ -557,7 +786,7 @@
                       { "Ref": "JiraProxyFqdn" },
                       "\n",
                       "JIRADC_SOFTWARE_URL=",
-                      { "Ref": "JiraBinaryInstallerUrl" },
+                      { "Ref": "JiraBinaryInstallPkg" },
                       "\n",
                       "JIRADC_SHARE_PATH=",
                       { "Ref": "JiraHomeSharePath" },
@@ -598,6 +827,22 @@
                       "\n",
                       {
                         "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                "role=",
+                                { "Ref": "InstanceRoleName" },
+                                "\n"
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
                           "UseCfnUrl",
                           {
                             "Fn::Join": [
@@ -630,11 +875,26 @@
                     [
                       "[cfn-auto-reloader-hook]\n",
                       "triggers=post.update\n",
-                      "path=Resources.JiraHost.Metadata\n",
+                      "path=Resources.JiraLC.Metadata\n",
                       "action=/opt/aws/bin/cfn-init -v -c update",
                       " --stack ",
                       { "Ref": "AWS::StackName" },
-                      " --resource JiraHost",
+                      " --resource JiraLC",
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --role ",
+                                { "Ref": "InstanceRoleName" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
                       {
                         "Fn::If": [
                           "UseCfnUrl",
@@ -680,35 +940,6 @@
                 "group": "root",
                 "mode": "000700",
                 "owner": "root"
-              },
-              "/tmp/adminkeys.pub": {
-                "group": "root",
-                "mode": "000600",
-                "owner": "root",
-                "source": { "Ref": "AdminPubkeyURL" }
-              },
-              "/tmp/admkey.sh": {
-                "content": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "#!/bin/bash\n\n",
-                      "PROVHOME=$(getent passwd ",
-                      { "Ref": "ProvisionUser" },
-                      " | awk -F\":\" '{print $6}')\n",
-                      "\n",
-                      "install -b -m 000600 -o ",
-                      { "Ref": "ProvisionUser" },
-                      " -g ",
-                      { "Ref": "ProvisionUser" },
-                      " /tmp/adminkeys.pub ${PROVHOME}/.ssh/authorized_keys\n",
-                      "\n"
-                    ]
-                  ]
-                },
-                "group": "root",
-                "mode": "000700",
-                "owner": "root"
               }
             },
             "services": {
@@ -727,7 +958,12 @@
           "watchmaker-install": {
             "commands": {
               "10-watchmaker-install": {
-                "command": "bash -xe /etc/cfn/scripts/watchmaker-install.sh"
+                "command": "bash -xe /etc/cfn/scripts/watchmaker-install.sh",
+                "env": {
+                  "AWS_CA_BUNDLE": "/etc/pki/tls/certs/ca-bundle.crt",
+                  "AWS_DEFAULT_REGION": { "Ref": "AWS::Region" },
+                  "REQUESTS_CA_BUNDLE": "/etc/pki/tls/certs/ca-bundle.crt"
+                }
               }
             }
           },
@@ -741,6 +977,7 @@
                       "watchmaker --log-level debug",
                       " --log-dir /var/log/watchmaker",
                       " --no-reboot",
+                      " --exclude-states scap*scan",
                       {
                         "Fn::If": [
                           "UseWamConfig",
@@ -770,6 +1007,13 @@
                               ]
                             ]
                           },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseS3Source",
+                          " --s3-source",
                           ""
                         ]
                       }
@@ -821,6 +1065,13 @@
                           },
                           ""
                         ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseS3Source",
+                          " --s3-source",
+                          ""
+                        ]
                       }
                     ]
                   ]
@@ -828,9 +1079,17 @@
               }
             }
           }
-        }
+        },
+        "ToggleCfnInitUpdate": { "Ref": "ToggleCfnInitUpdate" }
       },
       "Properties": {
+        "AssociatePublicIpAddress": {
+          "Fn::If": [
+            "AssignPublicIp",
+            "true",
+            "false"
+          ]
+        },
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/sda1",
@@ -848,9 +1107,9 @@
                     "NotGenFive",
                     {
                       "Fn::FindInMap": [
-                         "InstanceTypeCapabilities",
-                         "PreGenFive",
-                         "ExternDeviceName"
+                        "InstanceTypeCapabilities",
+                        "PreGenFive",
+                        "ExternDeviceName"
                       ]
                     },
                     {
@@ -875,45 +1134,34 @@
         "IamInstanceProfile": {
           "Fn::If": [
             "AssignInstanceRole",
-            { "Ref": "InstanceRole" },
+            { "Ref": "InstanceRoleProfile" },
             { "Ref": "AWS::NoValue" }
           ]
         },
         "ImageId": { "Ref": "AmiId" },
         "InstanceType": { "Ref": "InstanceType" },
-        "KeyName": { "Ref": "KeyPairName" },
-        "NetworkInterfaces": [
-          {
-            "AssociatePublicIpAddress": {
-              "Fn::If": [
-                "AssignPublicIp",
-                "true",
-                "false"
-              ]
-            },
-            "DeviceIndex": "0",
-            "GroupSet": { "Ref": "SecurityGroupIds" },
-            "SubnetId": { "Ref": "SubnetId" }
-          }
-        ],
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": {
-              "Fn::Join": [
-                "",
-                [
-                  { "Ref": "AWS::StackName" }
-                ]
-              ]
-            }
-          }
-        ],
+        "KeyName": {
+          "Fn::If": [
+            "UseKeyPair",
+            { "Ref": "KeyPairName" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "SecurityGroups": { "Ref": "SecurityGroupIds" },
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
               "",
               [
+                "Content-Type: multipart/mixed; boundary=\"===============3585321300151562773==\"\n",
+                "MIME-Version: 1.0\n",
+                "\n",
+                "--===============3585321300151562773==\n",
+                "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
+                "MIME-Version: 1.0\n",
+                "Content-Transfer-Encoding: 7bit\n",
+                "Content-Disposition: attachment; filename=\"cloud.cfg\"\n",
+                "\n",
                 "#cloud-config\n",
                 "\n",
                 "system_info:\n",
@@ -921,6 +1169,8 @@
                 "    name: ",
                 { "Ref": "ProvisionUser" },
                 "\n",
+                "users:\n",
+                "  - default\n",
                 "\n",
                 "hostname: ",
                 { "Ref": "Hostname" },
@@ -939,7 +1189,7 @@
                         "",
                         [
                           "bootcmd:\n",
-                          "  - cloud-init-per instance mkfs-bkupvolume mkfs -t ext4 ",
+                          "- cloud-init-per instance mkfs-appvolume mkfs -t ext4 ",
                           {
                             "Fn::If": [
                               "NotGenFive",
@@ -962,7 +1212,7 @@
                           "\n",
                           "\n",
                           "mounts:\n",
-                          "  - [ ",
+                          "- [ ",
                           {
                             "Fn::If": [
                               "NotGenFive",
@@ -984,61 +1234,102 @@
                           },
                           ", ",
                           { "Ref": "BackupVolumeMountPath" },
-                          ", ",
-                          "\"auto\" ",
-                          "]\n"
+                          " ]\n"
+                        ]
+                      ]
+                    },
+                    { "Ref": "AWS::NoValue" }
+                  ]
+                },
+                "\n",
+                "--===============3585321300151562773==\n",
+                "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
+                "MIME-Version: 1.0\n",
+                "Content-Transfer-Encoding: 7bit\n",
+                "Content-Disposition: attachment; filename=\"script.sh\"\n",
+                "\n",
+                "#!/bin/bash -xe\n\n",
+                "# CFN LaunchConfig Update Toggle: ",
+                { "Ref": "ToggleNewInstances" },
+                "\n\n",
+                "# Export cert bundle ENVs\n",
+                "export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n\n",
+                "\n",
+                "# Define our error-handler\n",
+                "function err_exit {\n",
+                "   echo \"${1}\"\n",
+                "   logger -p kern.crit -t UserData \"${1}\"\n",
+                "   /opt/aws/bin/cfn-signal -e 1 --stack ",
+                    { "Ref": "AWS::StackName" },
+                    " --resource JenkinsMasterLC\n",
+                "   exit 1\n",
+                "}\n",
+                "\n",
+                "# Install RPMs needed by the cfn-tools.\n",
+                "yum --enablerepo=",
+                 { "Ref": "EpelRepo" },
+                 " install -y ",
+                 { "Ref": "PyStache" },
+                 " ",
+                 { "Ref": "PipRpm" },
+                 " || err_exit 'Could not install Cfn dependencies.'\n",
+                "\n",
+                "# Update cfn-bootstrapper hash method\n",
+                "PYVERS=$(python -c 'import sys;",
+                 " version=sys.version_info[:2];",
+                 " print(\"{0}.{1}\".format(*version))')\n",
+                "sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
+                 " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
+                 "/util.py\n",
+                "\n",
+                "# Upgrade pip and setuptools\n",
+                "PYPI_URL=",
+                { "Ref": "PipIndexFips" },
+                "\n",
+                "pip install",
+                " --index-url=\"$PYPI_URL\"",
+                " --upgrade pip setuptools\n\n",
+                "# Fixup cfn utils\n",
+                "INITDIR=$(find -L /opt/aws/apitools/cfn-init/init -name redhat ",
+                "2> /dev/null || echo /usr/init/redhat)\n",
+                "chmod 775 ${INITDIR}/cfn-hup\n",
+                "ln -f -s ${INITDIR}/cfn-hup /etc/rc.d/init.d/cfn-hup\n",
+                "chkconfig --add cfn-hup\n",
+                "chkconfig cfn-hup on\n",
+                "mkdir -p /opt/aws/bin\n",
+                "BINDIR=$(find -L /opt/aws/apitools/cfn-init -name bin ",
+                "2> /dev/null || echo /usr/bin)\n",
+                "for SCRIPT in cfn-elect-cmd-leader cfn-get-metadata cfn-hup ",
+                "cfn-init cfn-send-cmd-event cfn-send-cmd-result cfn-signal\n",
+                "do\n",
+                "  ln -s ${BINDIR}/${SCRIPT} /opt/aws/bin/${SCRIPT} 2> /dev/null || ",
+                "  echo Skipped symbolic link, /opt/aws/bin/${SCRIPT} already exists\n",
+                "done\n\n",
+                "# Add cfn-signal to path\n",
+                "hash cfn-signal 2> /dev/null || ",
+                "PATH=\"${PATH}:/usr/local/bin:/opt/aws/bin\"",
+                "\n\n",
+                "# Execute cfn-init\n",
+                "/opt/aws/bin/cfn-init -v -c launch",
+                " --stack ",
+                { "Ref": "AWS::StackName" },
+                " --resource JiraLC",
+                {
+                  "Fn::If": [
+                    "AssignInstanceRole",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          " --role ",
+                          { "Ref": "InstanceRoleName" }
                         ]
                       ]
                     },
                     ""
                   ]
                 },
-                "\n",
-                "runcmd:\n",
-                "  - |\n",
-                "    # Export cert bundle ENVs\n",
-                "    export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-                "    export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n\n",
-                "    \n",
-                "    # Define our error-handler\n",
-                "    function err_exit {\n",
-                "     echo \"${1}\"\n",
-                "     logger -p kern.crit -t UserData \"${1}\"\n",
-                "     /opt/aws/bin/cfn-signal -e 1 --stack ",
-                { "Ref": "AWS::StackName" },
-                " --resource JiraHost\n",
-                "     exit 1\n",
-                "    }\n",
-                "    # Install RPMs needed by the cfn-tools.\n",
-                "    yum --enablerepo=",
-                { "Ref": "EpelRepo" },
-                " install -y ",
-                { "Ref": "PyStache" },
-                " ",
-                { "Ref": "PipRpm" },
-                " || err_exit 'Could not install Cfn dependencies.'\n",
-                "    \n",
-                "    # Upgrade pip and setuptools\n",
-                "    PYPI_URL=",
-                { "Ref": "PipIndexFips" },
-                "\n",
-                "    pip install --index-url=\"$PYPI_URL\"",
-                " --upgrade pip setuptools\n\n",
-                "    # Update cfn-bootstrapper hash method\n",
-                "    printf 'Updating CFn hash-check method... '\n",
-                "    PYVERS=$(python -c 'import sys;",
-                " version=sys.version_info[:2];",
-                " print(\"{0}.{1}\".format(*version))')\n",
-                "    sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
-                " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
-                "/util.py && echo 'Success' || ",
-                "err_exit 'Failed updating CFn hash-method'\n",
-                "    \n",
-                "    # Initialize the CFn subsystems\n",
-                "    /opt/aws/bin/cfn-init -v -c launch",
-                " --stack ",
-                { "Ref": "AWS::StackName" },
-                " --resource JiraHost",
                 {
                   "Fn::If": [
                     "UseCfnUrl",
@@ -1061,7 +1352,22 @@
                 " /opt/aws/bin/cfn-signal -e 1",
                 "  --stack ",
                 { "Ref": "AWS::StackName" },
-                "  --resource JiraHost",
+                "  --resource JiraASG",
+                {
+                  "Fn::If": [
+                    "AssignInstanceRole",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          " --role ",
+                          { "Ref": "InstanceRoleName" }
+                        ]
+                      ]
+                    },
+                    ""
+                  ]
+                },
                 {
                   "Fn::If": [
                     "UseCfnUrl",
@@ -1081,13 +1387,14 @@
                 { "Ref": "AWS::Region" },
                 ";",
                 " exit 1",
-                " )\n\n"
+                " )\n\n",
+                "--===============3585321300151562773==--"
               ]
             ]
           }
         }
       },
-      "Type": "AWS::EC2::Instance"
+      "Type": "AWS::AutoScaling::LaunchConfiguration"
     }
   }
 }

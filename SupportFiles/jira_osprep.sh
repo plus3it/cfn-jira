@@ -20,6 +20,9 @@ JIRASVCS=(
       http
       https
       jira
+      nfs
+      rpc-bind
+      mountd
    )
 HSHAREPATH="${JIRADC_SHARE_PATH:-UNDEF}"
 HSHARETYPE="${JIRADC_SHARE_TYPE:-UNDEF}"

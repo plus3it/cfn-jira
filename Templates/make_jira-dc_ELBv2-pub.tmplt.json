@@ -5,6 +5,11 @@
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "ProxyPrettyName" }, "" ] }
       ]
+    },
+    "AssignInstance": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "JiraInstanceId" }, "" ] }
+      ]
     }
   },
   "Description": "Template for creating a public ELB for users to connect through in order to connect to the Jira service.",
@@ -32,6 +37,13 @@
         "Name" : { "Fn::Sub": "${AWS::StackName}-AlbDnsName" }
       },
       "Value": { "Fn::GetAtt": [ "JiraPubAlbLoadBalancer", "DNSName" ] }
+    },
+    "JiraAlbTgroupArn": {
+      "Description": "ARN of the Jira ALB's TargetGroup",
+      "Export": {
+        "Name" : { "Fn::Sub": "${AWS::StackName}-AlbTargArn" }
+      },
+      "Value": { "Ref": "JiraPubAlbTgroup" }
     }
   },
   "Parameters": {
@@ -48,7 +60,7 @@
       "Type": "Number"
     },
     "JiraServicePort": {
-      "Default": "80",
+      "Default": "8080",
       "Description": "TCP Port number that the Jira host listens to.",
       "MaxValue": "65535",
       "Type": "Number"
@@ -58,7 +70,7 @@
       "Type": "List<AWS::EC2::Subnet::Id>"
     },
     "JiraInstanceId": {
-      "Description": "ID of the EC2-instance this template should create a proxy for.",
+      "Description": "(Optional) ID of the EC2-instance this template should create a proxy for.",
       "Type": "String"
     },
     "ProxyPrettyName": {
@@ -159,12 +171,18 @@
         },
         "Port": { "Ref": "JiraServicePort" },
         "Protocol": "HTTP",
-        "Targets": [
-          {
-            "Id": { "Ref": "JiraInstanceId" },
-            "Port": { "Ref": "JiraServicePort" }
-          }
-        ],
+        "Targets": {
+          "Fn::If": [
+            "AssignInstance",
+              [
+                {
+                  "Id": { "Ref": "JiraInstanceId" },
+                  "Port": { "Ref": "JiraServicePort" }
+                }
+              ],
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
         "UnhealthyThresholdCount": "2",
         "VpcId": { "Ref": "TargetVPC" }
       },

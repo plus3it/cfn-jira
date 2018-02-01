@@ -1,0 +1,620 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template coordinates the running of the Jira Security-group, EFS, RDS, S3, IAM and EC2 templates.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Child Template URLs"
+          },
+          "Parameters": [
+            "SgTemplateUri",
+            "EfsTemplateUri",
+            "S3TemplateUri",
+            "RdsTemplateUri",
+            "IamTemplateUri",
+            "Ec2TemplateUri",
+            "ElbTemplateUri"
+          ]
+        },
+        {
+          "Label": {
+            "default": "EC2 Parameters"
+          },
+          "Parameters": [
+            "InstanceType",
+            "AmiId",
+            "Ec2Subnet",
+            "Ec2Hostname",
+            "Ec2Domain",
+            "ProvisionUser",
+            "Ec2ProvKey",
+            "AdminPubkeyURL"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Parameters"
+          },
+          "Parameters": [
+            "DbInstanceType",
+            "DbDataSize",
+            "PgsqlVersion",
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Jira Parameters"
+          },
+          "Parameters": [
+            "JiraBinaryInstallerUrl",
+            "JiraAppPrepUrl",
+            "JiraProxyFqdn",
+            "JiraHomeSharePath",
+            "JiraHomeShareType",
+            "BackupVolumeDevice",
+            "BackupVolumeMountPath",
+            "BackupVolumeSize",
+            "BackupVolumeType"
+          ]
+        },
+        {
+          "Label": {
+            "default": "ELB Parameters"
+          },
+          "Parameters": [
+            "ProxyPrettyName",
+            "JiraListenerCert",
+            "JiraListenPort",
+            "JiraServicePort",
+            "PubElbSubnets"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous Parameters"
+          },
+          "Parameters": [
+            "ServiceTld",
+            "TargetVPC",
+            "HaSubnets",
+            "RolePrefix",
+            "EpelRepo",
+            "PyStache",
+            "PipRpm",
+            "PipIndexFips"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "Ec2TemplateUri": {
+          "default": "EC2 Instance"
+        },
+        "EfsTemplateUri": {
+          "default": "EFS Shares"
+        },
+        "IamTemplateUri": {
+          "default": "IAM Roles"
+        },
+        "JiraShareType": {
+          "default": "Share Server Type"
+        },
+        "RdsTemplateUri": {
+          "default": "RDS Database"
+        },
+        "S3TemplateUri": {
+          "default": "S3 Buckets"
+        },
+        "SgTemplateUri": {
+          "default": "Security Groups"
+        },
+        "WatchmakerConfig": {
+          "default": "Misc. Deployment Configs"
+        },
+        "WatchmakerEnvironment": {
+          "default": "Deployment Environment"
+        }
+      }
+    }
+  },
+  "Outputs": {},
+  "Parameters": {
+    "AdminPubkeyURL": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL the file containing the admin users' SSH public keys.",
+      "Type": "String"
+    },
+    "AmiId": {
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
+      "Description": "ID of the AMI to launch",
+      "Type": "String"
+    },
+    "BackupVolumeDevice": {
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Default": "false",
+      "Description": "Whether to mount an EBS volume as a backup-staging location. Leave as default (\"false\") to launch without a backup-staging volume",
+      "Type": "String"
+    },
+    "BackupVolumeMountPath": {
+      "AllowedPattern": "/.*",
+      "Default": "/var/backups",
+      "Description": "Filesystem path to mount the backup-stageing volume. Ignored if \"BackupVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "BackupVolumeSize": {
+      "ConstraintDescription": "Must be between 1GB and 16384GB.",
+      "Default": "10",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+      "MaxValue": "16384",
+      "MinValue": "10",
+      "Type": "Number"
+    },
+    "BackupVolumeType": {
+      "AllowedValues": [
+        "gp2",
+        "io1",
+        "sc1",
+        "st1",
+        "standard"
+      ],
+      "Default": "gp2",
+      "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "DbAdminName": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*[a-z0-9]",
+      "Description": "Name of the Jira master database-user.",
+      "Type": "String"
+    },
+    "DbAdminPass": {
+      "Description": "Password of the Jira master database-user.",
+      "NoEcho": "True",
+      "Type": "String"
+    },
+    "DbDataSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "5",
+      "Description": "Size in GiB of the RDS table-space to create.",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "DbInstanceName": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*[a-z0-9]",
+      "Description": "Instance-name of the Jira database.",
+      "Type": "String"
+    },
+    "DbInstanceType": {
+      "AllowedValues": [
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large",
+        "db.t2.xlarge",
+        "db.t2.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.r4.large",
+        "db.r4.xlarge",
+        "db.r4.2xlarge",
+        "db.r4.4xlarge",
+        "db.r4.8xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r3.8xlarge"
+      ],
+      "Default": "db.t2.small",
+      "Description": "Amazon RDS instance type",
+      "Type": "String"
+    },
+    "DbNodeName": {
+      "Description": "NodeName of the Jira database.",
+      "Type": "String"
+    },
+    "Ec2Domain": {
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
+      "Description": "Suffix for Jira's hostname and DNS record",
+      "Type": "String"
+    },
+    "Ec2Hostname": {
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
+      "Description": "Node-name for Jira's hostname and DNS record",
+      "Type": "String"
+    },
+    "Ec2ProvKey": {
+      "Description": "Public/private key pairs allowing the provisioning-user to securely connect to the instance after it launches.",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "Ec2Subnet": {
+      "Description": "Subnet to associate to the Instance",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "Ec2TemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates the Jira-hosting EC2 instance.",
+      "Type": "String"
+    },
+    "EfsTemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates Jira's EFS shares.",
+      "Type": "String"
+    },
+    "ElbTemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates the user-facing web-proxy for the Jira service.",
+      "Type": "String"
+    },
+    "EpelRepo": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*$",
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
+      "Default": "epel",
+      "Description": "Name of network's EPEL repo.",
+      "Type": "String"
+    },
+    "HaSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "IamTemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates Jira's IAM role(s).",
+      "Type": "String"
+    },
+    "InstanceType": {
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "t2.xlarge",
+        "t2.2xlarge",
+        "m5.large",
+        "m5.xlarge",
+        "m5.2xlarge",
+        "m5.4xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "m3.4xlarge",
+        "c5.large",
+        "c5.xlarge",
+        "c5.2xlarge",
+        "c5.4xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge",
+        "c3.large",
+        "c3.xlarge",
+        "c3.2xlarge",
+        "c3.4xlarge"
+      ],
+      "Default": "t2.large",
+      "Description": "Amazon EC2 instance type",
+      "Type": "String"
+    },
+    "JiraAppPrepUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter EC2 application installer/configuration script.",
+      "Type": "String"
+    },
+    "JiraBinaryInstallerUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter binary-installer file.",
+      "Type": "String"
+    },
+    "JiraHomeSharePath": {
+      "Default": "",
+      "Description": "Share-path of shared Jira-home.",
+      "Type": "String"
+    },
+    "JiraHomeShareType": {
+      "AllowedValues": [
+        "glusterfs",
+        "nfs"
+      ],
+      "Description": "Type of network share hosting persisted Jira-home content.",
+      "Type": "String"
+    },
+    "JiraListenPort": {
+      "Default": "443",
+      "Description": "TCP Port number on which the Jira ELB listens for requests.",
+      "MaxValue": "65535",
+      "MinValue": "1",
+      "Type": "Number"
+    },
+    "JiraListenerCert": {
+      "Default": "",
+      "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
+      "Type": "String"
+    },
+    "JiraOsPrepUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter EC2 OS-preparationscript.",
+      "Type": "String"
+    },
+    "JiraProxyFqdn": {
+      "Description": "FQDN of the front-end proxy host/service for Jira.",
+      "Type": "String"
+    },
+    "JiraServicePort": {
+      "Default": "80",
+      "Description": "TCP Port number that the Jira host listens to.",
+      "MaxValue": "65535",
+      "Type": "Number"
+    },
+    "PgsqlVersion": {
+      "AllowedValues": [
+        "9.6.6",
+        "9.6.5",
+        "9.6.3",
+        "9.6.2",
+        "9.6.1",
+        "9.5.10",
+        "9.5.9",
+        "9.5.7",
+        "9.5.6",
+        "9.5.4",
+        "9.5.2"
+      ],
+      "Default": "9.5.10",
+      "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
+      "Type": "String"
+    },
+    "PipIndexFips": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "https://pypi.org/simple/",
+      "Description": "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Type": "String"
+    },
+    "PipRpm": {
+      "Default": "python2-pip",
+      "Description": "Name of preferred pip RPM.",
+      "Type": "String"
+    },
+    "ProvisionUser": {
+      "AllowedPattern": "[a-z0-9]{6,12}+",
+      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters.",
+      "Default": "jirabuild",
+      "Description": "Default login user account name.",
+      "Type": "String"
+    },
+    "ProxyPrettyName": {
+      "Description": "A short, human-friendly label to assign to the ELB (no capital letters).",
+      "Type": "String"
+    },
+    "PubElbSubnets": {
+      "Description": "Select three subnets - each from different, user-facing Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "PyStache": {
+      "Default": "pystache",
+      "Description": "Name of preferred pystache RPM.",
+      "Type": "String"
+    },
+    "RdsTemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates Jira's RDS database.",
+      "Type": "String"
+    },
+    "S3TemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates Jira's S3 buckets.",
+      "Type": "String"
+    },
+    "RolePrefix": {
+      "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
+      "Type": "String"
+    },
+    "ServiceTld": {
+      "Default": "amazonaws.com",
+      "Description": "TLD of the created EFS-endpoint.",
+      "Type": "String"
+    },
+    "SgTemplateUri": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URI for the template that creates Jira's SGs.",
+      "Type": "String"
+    },
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy cluster nodes into.",
+      "Type": "AWS::EC2::VPC::Id"
+    }
+  },
+  "Resources": {
+    "Ec2Res": {
+      "Properties": {
+        "Parameters": {
+          "AdminPubkeyURL": { "Ref": "AdminPubkeyURL" },
+          "AmiId": { "Ref": "AmiId" },
+          "BackupVolumeDevice": { "Ref": "BackupVolumeDevice" },
+          "BackupVolumeMountPath": { "Ref": "BackupVolumeMountPath" },
+          "BackupVolumeSize": { "Ref": "BackupVolumeSize" },
+          "BackupVolumeType": { "Ref": "BackupVolumeType" },
+          "CfnEndpointUrl": {
+            "Fn::Join": [
+              ".",
+              [
+                "https://cloudformation",
+                { "Ref": "AWS::Region" },
+                { "Ref": "ServiceTld" }
+              ]
+            ]
+          },
+          "Domainname": { "Ref": "Ec2Domain" },
+          "EpelRepo": { "Ref": "EpelRepo" },
+          "Hostname": { "Ref": "Ec2Hostname" },
+          "InstanceRole": {
+            "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRoleProfile" ]
+          },
+          "InstanceType": { "Ref": "InstanceType" },
+          "JiraAppPrepUrl": { "Ref": "JiraAppPrepUrl" },
+          "JiraBinaryInstallerUrl": { "Ref": "JiraBinaryInstallerUrl" },
+          "JiraHomeSharePath": {
+            "Fn::Join": [
+              ":",
+              [
+                { "Fn::GetAtt": [ "EfsRes", "Outputs.EfsEndpoint" ] },
+                { "Ref": "JiraHomeSharePath" }
+              ]
+            ]
+          },
+          "JiraHomeShareType": { "Ref": "JiraHomeShareType" },
+          "JiraOsPrepUrl": { "Ref": "JiraOsPrepUrl" },
+          "JiraPgsqlHost": {
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ]
+          },
+          "JiraPgsqlInst": { "Ref": "DbInstanceName" },
+          "JiraPgsqlManager": { "Ref": "DbAdminName" },
+          "JiraPgsqlPassword": { "Ref": "DbAdminPass" },
+          "JiraProxyFqdn": { "Ref": "JiraProxyFqdn" },
+          "KeyPairName": { "Ref": "Ec2ProvKey" },
+          "NoPublicIp": "true",
+          "NoReboot": "false",
+          "PipIndexFips": { "Ref": "PipIndexFips" },
+          "PipRpm": { "Ref": "PipRpm" },
+          "ProvisionUser": { "Ref": "ProvisionUser" },
+          "PyStache": { "Ref": "PyStache" },
+          "SecurityGroupIds": {
+            "Fn::Join": [
+              ",",
+              [
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] },
+                { "Fn::GetAtt": [ "SgRes", "Outputs.NasSg" ] },
+                { "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ] }
+              ]
+            ]
+          },
+          "SubnetId": { "Ref": "Ec2Subnet" }
+        },
+        "TemplateURL": { "Ref": "Ec2TemplateUri" }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "EfsRes": {
+      "Properties": {
+        "Parameters": {
+          "EfsSg": { "Fn::GetAtt": [ "SgRes", "Outputs.NasSg" ] },
+          "EfsSubnet": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "HaSubnets" }
+            ]
+          },
+          "ServiceTld": { "Ref": "ServiceTld" }
+        },
+        "TemplateURL": { "Ref": "EfsTemplateUri" }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "ElbRes": {
+      "Properties": {
+        "Parameters": {
+          "JiraListenerCert": { "Ref": "JiraListenerCert" },
+          "JiraListenPort": { "Ref": "JiraListenPort" },
+          "JiraServicePort": { "Ref": "JiraServicePort" },
+          "HaSubnets": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "PubElbSubnets" }
+            ]
+          },
+          "JiraInstanceId": {
+            "Fn::GetAtt": [ "Ec2Res", "Outputs.JiraInstanceId" ]
+          },
+          "ProxyPrettyName": { "Ref": "ProxyPrettyName" },
+          "SecurityGroupIds": {
+            "Fn::Join": [
+              ",",
+              [
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] }
+              ]
+            ]
+          },
+          "TargetVPC": { "Ref": "TargetVPC" }
+        },
+        "TemplateURL": { "Ref": "ElbTemplateUri" }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "IamRes": {
+      "Properties": {
+        "Parameters": {
+          "BackupBucketArn": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketArn" ] },
+          "RolePrefix": { "Ref": "RolePrefix" },
+          "ServiceTld": { "Ref": "ServiceTld" }
+        },
+        "TemplateURL": { "Ref": "IamTemplateUri" },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "RdsRes": {
+      "Properties": {
+        "Parameters": {
+          "DbAdminName": { "Ref": "DbAdminName" },
+          "DbAdminPass": { "Ref": "DbAdminPass" },
+          "DbDataSize": { "Ref": "DbDataSize" },
+          "DbInstanceName": { "Ref": "DbInstanceName" },
+          "DbInstanceType": { "Ref": "DbInstanceType" },
+          "DbIsMultiAz": "true",
+          "DbNodeName": { "Ref": "DbNodeName" },
+          "DbSecurityGroup": { "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ] },
+          "DbSubnets": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "HaSubnets" }
+            ]
+          },
+          "PgsqlVersion": { "Ref": "PgsqlVersion" },
+          "TargetVPC": { "Ref": "TargetVPC" }
+        },
+        "TemplateURL": { "Ref": "RdsTemplateUri" }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "S3Res": {
+      "Properties": {
+        "Parameters": {},
+        "TemplateURL": { "Ref": "S3TemplateUri" },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "SgRes": {
+      "Properties": {
+        "Parameters": {
+          "TargetVPC": { "Ref": "TargetVPC" }
+        },
+        "TemplateURL": { "Ref": "SgTemplateUri" },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    }
+  }
+}
