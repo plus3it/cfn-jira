@@ -1262,7 +1262,7 @@
                 "   logger -p kern.crit -t UserData \"${1}\"\n",
                 "   /opt/aws/bin/cfn-signal -e 1 --stack ",
                     { "Ref": "AWS::StackName" },
-                    " --resource JenkinsMasterLC\n",
+                    " --resource JiraLC\n",
                 "   exit 1\n",
                 "}\n",
                 "\n",
