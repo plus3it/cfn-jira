@@ -422,8 +422,7 @@
                     ]
                   ]
                 }
-              }
-            },
+              },
               "/etc/cron.d/jira-data-backup": {
                 "content": {
                   "Fn::Join": [
@@ -452,6 +451,7 @@
                 "group": "root",
                 "mode": "000700",
                 "owner": "root"
+              }
             }
           },
           "configSets": {
