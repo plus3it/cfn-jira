@@ -54,6 +54,7 @@
           "Parameters": [
             "JiraBinaryInstallerUrl",
             "JiraAppPrepUrl",
+            "JiraPluginUrl",
             "JiraProxyFqdn",
             "JiraHomeSharePath",
             "JiraHomeShareType",
@@ -357,6 +358,12 @@
       "Description": "URL to the Jira Datacenter EC2 OS-preparationscript.",
       "Type": "String"
     },
+    "JiraPluginUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter Plugin installation script.",
+      "Type": "String"
+    },
     "JiraProxyFqdn": {
       "Description": "FQDN of the front-end proxy host/service for Jira.",
       "Type": "String"
@@ -495,6 +502,7 @@
           "JiraPgsqlInst": { "Ref": "DbInstanceName" },
           "JiraPgsqlManager": { "Ref": "DbAdminName" },
           "JiraPgsqlPassword": { "Ref": "DbAdminPass" },
+          "JiraPluginUrl": { "Ref": "JiraPluginUrl" },
           "JiraProxyFqdn": { "Ref": "JiraProxyFqdn" },
           "KeyPairName": { "Ref": "Ec2ProvKey" },
           "NoPublicIp": "true",
