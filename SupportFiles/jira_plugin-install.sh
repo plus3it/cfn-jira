@@ -71,18 +71,18 @@ fi
 ##                                     ##
 #########################################
 
-# Check if JIRA Plugins 1 folder exists, create if necessary
-if [[ -d ${PLUGINS1DIR} ]]
-then
-  echo "${PLUGINS1DIR} exists - skipping create"
-else
-  printf "Creating %s... " "${PLUGINS1DIR}"
-  install -d -o root -g root -m 0755 "$PLUGINS1DIR" && echo "Success!" ||
-    err_exit "Failed to create ${PLUGINS1DIR}"
-fi
-
 if [[ ${#PLUGINS1JARURL[@]} -ne 0 ]]
 then
+  # Check if JIRA Plugins 1 folder exists, create if necessary
+  if [[ -d ${PLUGINS1DIR} ]]
+  then
+    echo "${PLUGINS1DIR} exists - skipping create"
+  else
+    printf "Creating %s... " "${PLUGINS1DIR}"
+    install -d -o root -g root -m 0755 "$PLUGINS1DIR" && echo "Success!" ||
+      err_exit "Failed to create ${PLUGINS1DIR}"
+  fi
+
   # Pull down plugins
   for URL in "${PLUGINS1JARURL[@]}"
   do
@@ -105,18 +105,18 @@ fi
 ##                                     ##
 #########################################
 
-# Check if JIRA Plugins 2 folder exists, create if necessary
-if [[ -d ${INSTLPLUGINS2DIR} ]]
-then
-  echo "${INSTLPLUGINS2DIR} exists - skipping create"
-else
-  printf "Creating %s... " "${INSTLPLUGINS2DIR}"
-  install -d -o jira -g jira -m 0750 "$INSTLPLUGINS2DIR" && echo "Success!" ||
-    err_exit "Failed to create ${INSTLPLUGINS2DIR}"
-fi
-
 if [[ ${#PLUGINS2JARURL[@]} -ne 0 ]]
 then
+  # Check if JIRA Plugins 2 folder exists, create if necessary
+  if [[ -d ${INSTLPLUGINS2DIR} ]]
+  then
+    echo "${INSTLPLUGINS2DIR} exists - skipping create"
+  else
+    printf "Creating %s... " "${INSTLPLUGINS2DIR}"
+    install -d -o jira -g jira -m 0750 "$INSTLPLUGINS2DIR" && echo "Success!" ||
+      err_exit "Failed to create ${INSTLPLUGINS2DIR}"
+  fi
+
   # Pull down plugins
   for URL in "${PLUGINS2JARURL[@]}"
   do
