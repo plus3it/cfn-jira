@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2015
 #
 # Script to download and install JIRA Plugins from other sources
 #
@@ -16,15 +17,11 @@ INSTLPLUGINS2DIR="${DBCFGDIR}/plugins/installed-plugins"
 
 # Array of URLs to download plugins (Type 1 or 2)
 PLUGINS1JARURL=(
-                 # <http or https link to jar file>
+                 # <http or https link to Type 1 jar file>
                )
 PLUGINS2JARURL=(
-                 # <http or https link to jar or obr file>
+                 # <http or https link to Type 2 jar or obr file>
                )
-
-# Install Unzip if needed
-unzip -v && echo "Unzip already installed" || \
-  yum install unzip -y
 
 # Misc error-handler
 function err_exit {
@@ -54,16 +51,24 @@ quiet_git() {
    fi
 }
 
+############
+##  Main  ##
+############
+
 # Create git staging-area as needed
 if [[ -d ${SCRIPTHOME}/git ]]
 then
    echo "Git stagining-area already exists"
 else
    printf "Creating central location for Git-hosted resources... "
-   # shellcheck disable=SC2015
    install -d -m 000700 ${SCRIPTHOME}/git && echo "Success" || \
      err_exit "Failed creating git staging-area."
 fi
+
+# Check for Unzip and install Unzip if needed
+rpm -q unzip && echo "Unzip already installed" || \
+  yum install unzip -y && echo "Unzip installed successfully" || \
+    err_exit "Failed to install unzip"
 
 #########################################
 ##                                     ##
@@ -87,7 +92,7 @@ then
   for URL in "${PLUGINS1JARURL[@]}"
   do
     printf "Pulling down %s... " "${URL}"
-    curl -skL "${URL}" > "${PLUGINS1DIR}/${URL##*/}" && echo "Success!" || \
+    curl -fskL "${URL}" > "${PLUGINS1DIR}/${URL##*/}" && echo "Success!" || \
       err_exit "Failed to download Add-On binary-installer ${URL}"
     chmod 644 "${PLUGINS1DIR}/${URL##*/}" || \
       err_exit "Failed to set exec-mode on JAR installer ${URL##*/}"
@@ -113,7 +118,7 @@ then
     echo "${INSTLPLUGINS2DIR} exists - skipping create"
   else
     printf "Creating %s... " "${INSTLPLUGINS2DIR}"
-    install -d -o jira -g jira -m 0750 "$INSTLPLUGINS2DIR" && echo "Success!" ||
+    install -d -o jira -g jira -m 0750 "$INSTLPLUGINS2DIR" && echo "Success!" || \
       err_exit "Failed to create ${INSTLPLUGINS2DIR}"
   fi
 
@@ -123,14 +128,14 @@ then
     printf "Pulling down %s... " "${URL}"
     if [[ "${URL##*.}" == "jar" ]]
     then
-      curl -skL "${URL}" > "${INSTLPLUGINS2DIR}/${URL##*/}" && echo "Success!" || \
+      curl -fskL "${URL}" > "${INSTLPLUGINS2DIR}/${URL##*/}" && echo "Success!" || \
         err_exit "Failed to download Add-On binary-installer ${URL}"
       chmod 640 "${INSTLPLUGINS2DIR}/${URL##*/}" || \
         err_exit "Failed to set exec-mode on JAR installer ${URL##*/}"
     else
       if [[ "${URL##*.}" == "obr" ]]
       then
-        curl -skL "${URL}" > "${SCRIPTHOME}/${URL##*/}" && echo "Success!" || \
+        curl -fskL "${URL}" > "${SCRIPTHOME}/${URL##*/}" && echo "Success!" || \
           err_exit "Failed to download Add-On binary-installer ${URL}"
         printf "Extracting JAR files from file %s... " "${URL##*/}"
         FILENAME=${URL##*/}
@@ -138,7 +143,7 @@ then
           err_exit "Failed to extract OBR file ${SCRIPTHOME}/${URL##*/}"
         chmod -R 640 "${SCRIPTHOME}/${FILENAME%.*}" && echo "Success!"|| \
           err_exit "Failed to set exec-mode on extracted folder ${SCRIPTHOME}/${FILENAME%.*}"
-        find ${SCRIPTHOME}/${FILENAME%.*} -name '*.jar' -type f | xargs -I {} mv {} ${INSTLPLUGINS2DIR} && echo "Success!" || \
+        find ${SCRIPTHOME}/${FILENAME%.*} -name '*.jar' -type f -print0 | xargs -0 -n1 -I {} -t mv {} ${INSTLPLUGINS2DIR} && echo "Success!" || \
           err_exit "Failed to find and move JAR files to Plugins 2 directory"
       else
         printf "Incompatible plugin. %s not downloaded" "${URL##*/}"
