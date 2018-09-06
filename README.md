@@ -36,6 +36,15 @@ These templates do not include Route53 functionality. It is assumed that the req
 * While there are templates provided for standalone EC2 instances, they are provided mostly for "completeness". It's expected most users of these templates will desire the availability-enhancements accorded by the use of the auto-scaling templates.
 * The ELBv1 template is similarly provided for "completeness". It is expected that most users of these templates will either wish to use the more up-to-date AWS services ("future proofing") and/or the desire the extensible capabilities of the ALB (ELBv2).
 
+## Jira Plugins
+
+The capability to automate the installation of Jira plugins is provided through a supporting script.  The plugins-script takes arrays containing URLs to the plugin binaries and downloads the files into the appropriate Jira plugins-folder.  To pre-install Jira plugins, edit the plugin-script by adding plugin URLs into the appropriate plugins-array variable, and then add the URL where the plugins-script is hosted to the CFn parameters file. 
+
+* Jira plugins fall into two types, Type 1 and Type 2, and are in installed in two different folders.  It is up to the end-user to make a pre-determination of the plugin type and placing the plugin URL in the appropriate array variable.
+* The plugin-script supports standard and authenticated URLs:
+  * Standard URLs to the plugin binaries must be public-readable.  S3-hosted binaries must have permissions set as `--acl=public-read`
+  * Authenticated URLs are supported and must have the format `https://<USERNAME>:<PASSWORD>@<FQDN>/PATH/TO/FILE`
+
 ## Resultant Service Architecture
 
 The templates and scripts act together to make standing up a new service is quick and (reasonably) easy. Application-level configuration - beyond JDBC configuration - are not handled by these templates and scripts.
