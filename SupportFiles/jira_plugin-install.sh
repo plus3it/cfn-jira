@@ -146,11 +146,14 @@ then
         printf "Incompatible plugin. %s not downloaded" "${URL##*/}"
       fi
     fi
-    printf "Moving all JAR files to %s directory" "${INSTLPLUGINS2DIR}"
-    find ${PLUGINS2TMP} -name '*.jar' -type f -print0 | \
-      xargs -0 -n1 -I {} -t mv {} ${INSTLPLUGINS2DIR} && echo "Success!" || \
-      err_exit "Failed to find and move JAR files to Plugins 2 directory"
   done
+
+  # Move all plugin JAR files to plugins folder
+  printf "Moving all JAR files to %s directory" "${INSTLPLUGINS2DIR}"
+  find ${PLUGINS2TMP} -name '*.jar' -type f -print0 | \
+    xargs -0 -n1 -I {} -t mv {} ${INSTLPLUGINS2DIR} && echo "Success!" || \
+    err_exit "Failed to find and move JAR files to Plugins 2 directory"
+
   # Set file permissions and ownership for Plugin directory
   chown -R jira:jira "${PLUGINS2DIR}" && echo "Success!"|| \
     err_exit "Failed to set owner:group ownership in ${PLUGINS2DIR}"
