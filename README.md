@@ -38,12 +38,13 @@ These templates do not include Route53 functionality. It is assumed that the req
 
 ## Jira Plugins
 
-The capability to automate the installation of Jira plugins is provided through a supporting script.  The plugins-script takes arrays containing URLs to the plugin binaries and downloads the files into the appropriate Jira plugins-folder.  To pre-install Jira plugins, edit the plugin-script by adding plugin URLs into the appropriate plugins-array variable, and then add the URL where the plugins-script is hosted to the CFn parameters file. 
+The capability to automate the installation of Jira plugins is provided through a supporting script.  The plugins-script takes arrays containing URLs to the plugin binaries and downloads the files into the appropriate Jira plugins-folder.  To pre-install Jira plugins, edit the plugin-script by adding plugin URLs into the appropriate plugins-array variable.  Update the plugin parameter in the Cfn templates with the URL where the plugins-script file is hosted.  The plugin script will be executed as part of the Jira Cfn deployment.
 
 * Jira plugins fall into two types, Type 1 and Type 2, and are in installed in two different folders.  It is up to the end-user to make a pre-determination of the plugin type and placing the plugin URL in the appropriate array variable.
-* The plugin-script supports standard and authenticated URLs:
+* The plugin-script supports standard, authenticated, and pre-signed URLs:
   * Standard URLs to the plugin binaries must be public-readable.  S3-hosted binaries must have permissions set as `--acl=public-read`
   * Authenticated URLs are supported and must have the format `https://<USERNAME>:<PASSWORD>@<FQDN>/PATH/TO/FILE`
+  * Pre-signed URLs to S3-hosted plugins should have the format `https://<BUCKETNAME>.s3.amazonaws.com/PATH/TO/FILE?<SIGNATURE>`
 
 ## Resultant Service Architecture
 
