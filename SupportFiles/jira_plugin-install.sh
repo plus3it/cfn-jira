@@ -12,15 +12,16 @@ JIRADCHOME="/var/atlassian"
 JIRAINSTDIR="/opt/atlassian/jira"
 DBCFGDIR="${JIRADCHOME}/application-data/jira"
 PLUGINS1DIR="${JIRAINSTDIR}/atlassian-jira/WEB-INF/lib"
+PLUGINS2TMP="$SCRIPTHOME/plugins2"
 PLUGINS2DIR="${DBCFGDIR}/plugins"
 INSTLPLUGINS2DIR="${DBCFGDIR}/plugins/installed-plugins"
 
 # Array of URLs to download plugins (Type 1 or 2)
 PLUGINS1JARURL=(
-                 # <http or https link to Type 1 jar file>
+                 # "<http or https link to Type 1 jar file>"
                )
 PLUGINS2JARURL=(
-                 # <http or https link to Type 2 jar or obr file>
+                 # "<http or https link to Type 2 jar or obr file>"
                )
 
 # Misc error-handler
@@ -84,7 +85,7 @@ then
     echo "${PLUGINS1DIR} exists - skipping create"
   else
     printf "Creating %s... " "${PLUGINS1DIR}"
-    install -d -o root -g root -m 0755 "$PLUGINS1DIR" && echo "Success!" ||
+    install -d -o jira -g jira -m 0755 "$PLUGINS1DIR" && echo "Success!" ||
       err_exit "Failed to create ${PLUGINS1DIR}"
   fi
 
@@ -92,14 +93,11 @@ then
   for URL in "${PLUGINS1JARURL[@]}"
   do
     printf "Pulling down %s... " "${URL}"
-    curl -fskL "${URL}" > "${PLUGINS1DIR}/${URL##*/}" && echo "Success!" || \
+    install -b -m 000644 -o jira -g jira \
+      <( curl -fskL "${URL}" ) "${PLUGINS1DIR}/$( echo ${URL##*\/} | sed 's/\?.*$//' )" \
+      && echo "Success!" || \
       err_exit "Failed to download Add-On binary-installer ${URL}"
-    chmod 644 "${PLUGINS1DIR}/${URL##*/}" || \
-      err_exit "Failed to set exec-mode on JAR installer ${URL##*/}"
   done
-  # Set file permissions and ownership for Plugin directory
-  chown -R jira:jira "${PLUGINS1DIR}" && echo "Success!"|| \
-    err_exit "Failed to set owner:group ownership in ${PLUGINS1DIR}"
 else
   printf "Plugins 1 array empty. No plugins added!"
 fi
@@ -123,32 +121,35 @@ then
   fi
 
   # Pull down plugins
+  printf "Creating temporary plugins folder %s... " "${PLUGINS2TMP}"
+  install -d "${PLUGINS2TMP}"  && echo "Success!" || \
+    err_exit "Failed to create ${PLUGINS2TMP}"
+
   for URL in "${PLUGINS2JARURL[@]}"
   do
-    printf "Pulling down %s... " "${URL}"
-    if [[ "${URL##*.}" == "jar" ]]
+    FILENAME=$(echo ${URL##*\/} | sed 's/\?.*$//')
+    PLUGINEXT=$(echo ${URL##*\/} | sed 's/\?.*$//' | sed 's/.*\.//')
+    printf "Pulling down %s... " "${FILENAME}"
+    install -b -m 000640 -o jira -g jira \
+      <( curl -fskL "${URL}" ) "${PLUGINS2TMP}/${FILENAME}" && echo "Success!" || \
+      err_exit "Failed to download Add-On binary-installer ${URL}"
+    if [[ "${PLUGINEXT}" == "jar" ]]
     then
-      curl -fskL "${URL}" > "${INSTLPLUGINS2DIR}/${URL##*/}" && echo "Success!" || \
-        err_exit "Failed to download Add-On binary-installer ${URL}"
-      chmod 640 "${INSTLPLUGINS2DIR}/${URL##*/}" || \
-        err_exit "Failed to set exec-mode on JAR installer ${URL##*/}"
+      printf "Plugin file %s is a JAR file. Unzip not required." "${FILENAME}"
     else
-      if [[ "${URL##*.}" == "obr" ]]
+      if [[ "${PLUGINEXT}" == "obr" ]]
       then
-        curl -fskL "${URL}" > "${SCRIPTHOME}/${URL##*/}" && echo "Success!" || \
-          err_exit "Failed to download Add-On binary-installer ${URL}"
-        printf "Extracting JAR files from file %s... " "${URL##*/}"
-        FILENAME=${URL##*/}
-        unzip -o ${SCRIPTHOME}/${URL##*/} -d ${SCRIPTHOME}/${FILENAME%.*} && echo "Success!" || \
-          err_exit "Failed to extract OBR file ${SCRIPTHOME}/${URL##*/}"
-        chmod -R 640 "${SCRIPTHOME}/${FILENAME%.*}" && echo "Success!"|| \
-          err_exit "Failed to set exec-mode on extracted folder ${SCRIPTHOME}/${FILENAME%.*}"
-        find ${SCRIPTHOME}/${FILENAME%.*} -name '*.jar' -type f -print0 | xargs -0 -n1 -I {} -t mv {} ${INSTLPLUGINS2DIR} && echo "Success!" || \
-          err_exit "Failed to find and move JAR files to Plugins 2 directory"
+        printf "Extracting OBR file %s... " "${FILENAME}"
+        unzip -o ${PLUGINS2TMP}/${FILENAME} -d ${PLUGINS2TMP}/${FILENAME%.*} && echo "Success!" || \
+          err_exit "Failed to extract OBR file ${PLUGINS2TMP}/${FILENAME##*/}"
       else
         printf "Incompatible plugin. %s not downloaded" "${URL##*/}"
       fi
     fi
+    printf "Moving all JAR files to %s directory" "${INSTLPLUGINS2DIR}"
+    find ${PLUGINS2TMP} -name '*.jar' -type f -print0 | \
+      xargs -0 -n1 -I {} -t mv {} ${INSTLPLUGINS2DIR} && echo "Success!" || \
+      err_exit "Failed to find and move JAR files to Plugins 2 directory"
   done
   # Set file permissions and ownership for Plugin directory
   chown -R jira:jira "${PLUGINS2DIR}" && echo "Success!"|| \
