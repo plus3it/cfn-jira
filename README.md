@@ -44,7 +44,7 @@ The capability to automate the installation of Jira plugins is provided through 
 * The plugin-script supports standard, authenticated, and pre-signed URLs:
   * Standard URLs to the plugin binaries must be public-readable.  S3-hosted binaries must have permissions set as `--acl=public-read`
   * Authenticated URLs are supported and must have the format `https://<USERNAME>:<PASSWORD>@<FQDN>/PATH/TO/FILE`
-  * Pre-signed URLs to S3-hosted plugins should have the format `https://<BUCKETNAME>.s3.amazonaws.com/PATH/TO/FILE?<SIGNATURE>`
+  * Pre-signed URLs to S3-hosted plugins will typically have a format similar to `https://<S3-BUCKET-HOSTNAME>/PATH/TO/FILE?<SIGNATURE>`
 
 ## Resultant Service Architecture
 
