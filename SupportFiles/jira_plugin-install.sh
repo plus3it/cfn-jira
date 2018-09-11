@@ -42,29 +42,9 @@ function err_exit {
    fi
 }
 
-# Make git run quietly...
-quiet_git() {
-   if [[ $( git "$@" < /dev/null > /dev/null 2>&1 )$? -eq 0 ]]
-   then
-      echo "Git-fetch successful"
-   else
-      err_exit "Git-fetch failed"
-   fi
-}
-
 ############
 ##  Main  ##
 ############
-
-# Create git staging-area as needed
-if [[ -d ${SCRIPTHOME}/git ]]
-then
-   echo "Git stagining-area already exists"
-else
-   printf "Creating central location for Git-hosted resources... "
-   install -d -m 000700 ${SCRIPTHOME}/git && echo "Success" || \
-     err_exit "Failed creating git staging-area."
-fi
 
 # Check for Unzip and install Unzip if needed
 rpm -q unzip && echo "Unzip already installed" || \
