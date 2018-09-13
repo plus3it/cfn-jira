@@ -69,6 +69,11 @@
         { "Fn::Equals": [ { "Ref": "JiraAppPrepUrl" }, "" ] }
       ]
     },
+    "UseCfnPluginInstaller": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "JiraPluginUrl" }, "" ] }
+      ]
+    },
     "UseCfnUrl": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] }
@@ -184,6 +189,7 @@
             "JiraPgsqlInst",
             "JiraPgsqlManager",
             "JiraPgsqlPassword",
+            "JiraPluginUrl",
             "JiraHomeSharePath",
             "JiraHomeShareType"
           ]
@@ -359,6 +365,12 @@
     "JiraPgsqlPassword": {
       "Description": "Manager-password  of the primary PostGreSQL instance.",
       "NoEcho": "True",
+      "Type": "String"
+    },
+    "JiraPluginUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the Jira Datacenter Plugin installation script.",
       "Type": "String"
     },
     "JiraProxyFqdn": {
@@ -653,6 +665,13 @@
                   { "Ref": "AWS::NoValue" }
                 ]
               },
+              {
+                "Fn::If": [
+                  "UseCfnPluginInstaller",
+                  "plugin-install",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
               "finalize",
               {
                 "Fn::If": [
@@ -679,6 +698,13 @@
                 "Fn::If": [
                   "UseCfnAppInstaller",
                   "app-install",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
+              {
+                "Fn::If": [
+                  "UseCfnPluginInstaller",
+                  "plugin-install",
                   { "Ref": "AWS::NoValue" }
                 ]
               },
@@ -762,6 +788,21 @@
             "commands": {
               "1-osprep-launch": {
                 "command": "bash -xe /etc/cfn/scripts/osprep.sh"
+              }
+            }
+          },
+          "plugin-install": {
+            "files": {
+              "/etc/cfn/scripts/jiraplugin.sh": {
+                "group": "root",
+                "mode": "000700",
+                "owner": "root",
+                "source": { "Ref": "JiraPluginUrl" }
+              }
+            },
+            "commands": {
+              "10-plugin-intall": {
+                "command": "bash -xe /etc/cfn/scripts/jiraplugin.sh"
               }
             }
           },
