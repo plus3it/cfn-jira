@@ -4,6 +4,7 @@
 # Script to download and install JIRA Plugins from other sources
 #
 #################################################################
+# shellcheck disable=SC2001
 # shellcheck disable=SC2086
 PROGNAME="$(basename ${0})"
 SCRIPTHOME="${HOME:-/root}"
@@ -107,8 +108,8 @@ then
 
   for URL in "${PLUGINS2JARURL[@]}"
   do
-    FILENAME=$(echo ${URL##*\/} | sed 's/\?.*$//')
-    PLUGINEXT=$(echo ${URL##*\/} | sed 's/\?.*$//' | sed 's/.*\.//')
+    FILENAME=$( echo ${URL##*\/} | sed 's/\?.*$//' )
+    PLUGINEXT=$( echo ${URL##*\/} | sed 's/\?.*$//' | sed 's/.*\.//' )
     printf "Pulling down %s... " "${FILENAME}"
     install -b -m 000640 -o jira -g jira \
       <( curl -fskL "${URL}" ) "${PLUGINS2TMP}/${FILENAME}" && echo "Success!" || \
