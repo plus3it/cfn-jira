@@ -25,8 +25,8 @@ pipeline {
         string(name: 'AwsRegion', defaultValue: 'us-east-1', description: 'Amazon region to deploy resources into')
         string(name: 'AwsCred', description: 'Jenkins-stored AWS credential with which to execute cloud-layer commands')
         string(name: 'GitCred', description: 'Jenkins-stored Git credential with which to execute git commands')
-        string(name: 'GitProjUrl', description: 'SSH URL from which to download the Jenkins git project')
-        string(name: 'GitProjBranch', description: 'Project-branch to use from the Jenkins git project')
+        string(name: 'GitProjUrl', description: 'SSH URL from which to download the Jira git project')
+        string(name: 'GitProjBranch', description: 'Project-branch to use from the Jira git project')
         string(name: 'CfnStackRoot', description: 'Unique token to prepend to all stack-element names')
         string(name: 'TemplateUrl', description: 'S3-hosted URL for the EC2 template file')
         string(name: 'AdminPubkeyURL', description: 'URL to the administrator pub keys')
@@ -56,7 +56,7 @@ pipeline {
         string(name: 'JiraBinaryInstallerUrl', defaultValue: '', description: 'URL to the Jira Datacenter binary-installer file.')
         string(name: 'JiraHomeSharePath', defaultValue: '', description: 'Share-path of shared Jira-home.')
         string(name: 'JiraHomeShareType', description: 'Type of network share hosting persisted Jira-home content.')
-        string(name: 'JiraListenPort', defaultValue: '443', description: 'TCP Port number on which the Jenkins ELB listens for requests')
+        string(name: 'JiraListenPort', defaultValue: '443', description: 'TCP Port number on which the Jira ELB listens for requests')
         string(name: 'JiraListenerCert', defaultValue: '', description: 'Name/ID of the ACM-managed SSL Certificate securing the public listener')
         string(name: 'JiraOsPrepUrl', defaultValue: '', description: 'URL to the Jira Datacenter EC2 OS-preparationscript.')
         string(name: 'JiraPluginUrl', defaultValue: '', description: 'URL to the Jira Datacenter Plugin installation script.')
@@ -295,7 +295,7 @@ pipeline {
                 }
             }
         }
-        stage ('Launch Jenkins Master Parent Instance Stack') {
+        stage ('Launch Jira Parent Instance Stack') {
             options {
                 timeout(time: 1, unit: 'HOURS')
             }

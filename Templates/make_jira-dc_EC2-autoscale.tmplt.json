@@ -441,12 +441,6 @@
       "Description": "Name of preferred pystache RPM.",
       "Type": "String"
     },
-    "PipIndexFips": {
-      "AllowedPattern": "^http[s]?://.*$",
-      "Default": "https://pypi.org/simple",
-      "Description": "URL to the PyPi Index",
-      "Type": "String"
-    },
     "SecurityGroupIds": {
       "Description": "List of security groups to apply to the instance(s)",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
