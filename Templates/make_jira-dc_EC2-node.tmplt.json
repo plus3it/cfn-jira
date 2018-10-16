@@ -460,7 +460,7 @@
                   ]
                 },
                 "group": "root",
-                "mode": "000700",
+                "mode": "000644",
                 "owner": "root"
               }
             }
