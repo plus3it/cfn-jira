@@ -122,7 +122,7 @@
     "BackupVolumeMountPath": {
       "AllowedPattern": "/.*",
       "Default": "/var/backups",
-      "Description": "Filesystem path to mount the backup-stageing volume. Ignored if \"BackupVolumeDevice\" is false",
+      "Description": "Filesystem path to mount the backup-staging volume. Ignored if \"BackupVolumeDevice\" is false",
       "Type": "String"
     },
     "BackupVolumeSize": {
