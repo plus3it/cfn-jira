@@ -12,9 +12,7 @@
       ]
     },
     "CreateBackupVolume": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "BackupVolumeDevice" }, "" ] }
-      ]
+      "Fn::Equals": [ { "Ref": "BackupVolumeDevice" }, "true" ]
     },
     "NotGenFive": {
       "Fn::Not": [
@@ -124,13 +122,13 @@
     "BackupVolumeMountPath": {
       "AllowedPattern": "/.*",
       "Default": "/var/backups",
-      "Description": "Filesystem path to mount the backup-stageing volume. Ignored if \"BackupVolumeDevice\" is blank",
+      "Description": "Filesystem path to mount the backup-staging volume. Ignored if \"BackupVolumeDevice\" is false",
       "Type": "String"
     },
     "BackupVolumeSize": {
       "ConstraintDescription": "Must be between 1GB and 16384GB.",
       "Default": "10",
-      "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is false",
       "MaxValue": "16384",
       "MinValue": "10",
       "Type": "Number"
@@ -144,7 +142,7 @@
         "standard"
       ],
       "Default": "gp2",
-      "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+      "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is false",
       "Type": "String"
     },
     "CfnEndpointUrl": {
@@ -460,7 +458,7 @@
                   ]
                 },
                 "group": "root",
-                "mode": "000700",
+                "mode": "000644",
                 "owner": "root"
               }
             }
