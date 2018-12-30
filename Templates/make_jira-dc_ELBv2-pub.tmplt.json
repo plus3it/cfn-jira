@@ -147,7 +147,7 @@
     "JiraPubAlbTgroup": {
       "Properties": {
         "HealthCheckPath": "/secure/Dashboard.jspa",
-        "HealthyThresholdCount": "5",
+        "HealthyThresholdCount": 5,
         "Name": {
           "Fn::Join": [
             "-",
@@ -183,7 +183,7 @@
             { "Ref": "AWS::NoValue" }
           ]
         },
-        "UnhealthyThresholdCount": "2",
+        "UnhealthyThresholdCount": 2,
         "VpcId": { "Ref": "TargetVPC" }
       },
       "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup"

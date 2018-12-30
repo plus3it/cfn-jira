@@ -106,9 +106,6 @@
         "IamTemplateUri": {
           "default": "IAM Roles"
         },
-        "JiraShareType": {
-          "default": "Share Server Type"
-        },
         "RdsTemplateUri": {
           "default": "RDS Database"
         },
@@ -657,7 +654,7 @@
           "ServiceTld": { "Ref": "ServiceTld" }
         },
         "TemplateURL": { "Ref": "IamTemplateUri" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -689,7 +686,7 @@
       "Properties": {
         "Parameters": {},
         "TemplateURL": { "Ref": "S3TemplateUri" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -699,7 +696,7 @@
           "TargetVPC": { "Ref": "TargetVPC" }
         },
         "TemplateURL": { "Ref": "SgTemplateUri" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     }

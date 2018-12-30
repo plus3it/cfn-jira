@@ -214,7 +214,7 @@
     "AmiId": {
       "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
       "Description": "ID of the AMI to launch",
-      "Type": "String"
+      "Type": "AWS::EC2::Image::Id"
     },
     "BackupBucket": {
       "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
@@ -511,7 +511,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "PropagateAtLaunch": "true",
+            "PropagateAtLaunch": true,
             "Value": {
               "Fn::Join": [
                 "",
@@ -527,10 +527,10 @@
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {
-          "MaxBatchSize": "2",
-          "MinInstancesInService": "1",
+          "MaxBatchSize": 2,
+          "MinInstancesInService": 1,
           "PauseTime": "PT30M",
-          "WaitOnResourceSignals": "true"
+          "WaitOnResourceSignals": true
         }
       }
     },
@@ -1121,15 +1121,15 @@
         "AssociatePublicIpAddress": {
           "Fn::If": [
             "AssignPublicIp",
-            "true",
-            "false"
+            true,
+            false
           ]
         },
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/sda1",
             "Ebs": {
-              "DeleteOnTermination": "true",
+              "DeleteOnTermination": true,
               "VolumeType": "gp2"
             }
           },
@@ -1157,7 +1157,7 @@
                   ]
                 },
                 "Ebs": {
-                  "DeleteOnTermination": "true",
+                  "DeleteOnTermination": true,
                   "VolumeSize": { "Ref": "BackupVolumeSize" },
                   "VolumeType": { "Ref": "BackupVolumeType" }
                 }
