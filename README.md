@@ -1,6 +1,6 @@
-# DOTC-Jira
+# Jira
 
-The DOTC-Jira project is a sub-project of the overarching DevOps Tool-Chain (DOTC) project. This project — and its peer projects — is designed to handle the automated deployment of common DevOps tool-chain services onto STIG-harderend, EL7-compatible Amazon EC2 instances and related AWS resources. The first part of this automation is comprised of CloudFormation (CFn) templates. Included in this project are the following templated activities:
+The Jira project is a sub-project of the overarching DevOps Tool-Chain (DOTC) project. This project — and its peer projects — is designed to handle the automated deployment of common DevOps tool-chain services onto STIG-harderend, EL7-compatible Amazon EC2 instances and related AWS resources. The first part of this automation is comprised of CloudFormation (CFn) templates. Included in this project are the following templated activities:
 
 * [AutoScaling EC2](Templates/make_jira-dc_EC2-autoscale.tmplt.json) instance
 * [Standalone EC2](Templates/make_jira-dc_EC2-node.tmplt.json) instance
@@ -17,7 +17,7 @@ The DOTC-Jira project is a sub-project of the overarching DevOps Tool-Chain (DOT
 
 Additionally, automation-scripts are provided to automate the deployment of the Jira Server software onto the relevant EC2 instances - whether stand-alone or managed via AWS's AutoScaling service.
 
-The above _may_ be usable to &mdash or, more likely, act as a starting-point for &mdash - automate the deployment of Jira DataCenter. No assocaited testing was done: if you borrow these templates to underpin additional capabilities, please  [contribute back](.github/contributing.md) the fruits of that effort (or notify us so we can link to your project).
+The above _may_ be usable to &mdash or, more likely, act as a starting-point for &mdash - automate the deployment of Jira DataCenter. No associated testing was done: if you borrow these templates to underpin additional capabilities, please  [contribute back](.github/contributing.md) the fruits of that effort (or notify us so we can link to your project).
 
 ## Design Assumptions
 
@@ -59,6 +59,6 @@ These templates and scripts are also designed to ensure that Jira data is persis
 
 * Ability to destroy and recreate at will, while retaining all configuration and hosted data, has been tested. It's expected that most such actions will happen via stack-update or autoscaling actions (manual, scheduled or reactive).  In the event that a stack-update results in two instances being "live" simultaneously, it will be necessary to restart the new instance after the pre-update instance terminates. This requirement is resultant Jira's built-in data-integrity protections.
 * Due to a [bug](https://bugzilla.redhat.com/show_bug.cgi?id=1312002) in the systemd/nfs-client implementation in RHEL/CentOS 7, reboots of instances have a better than 90% probability of hanging. This _should_ only effect template-users that deploy standalone Jira EC2s.
-* The EC2 template runs [watchmaker](http://watchmaker.readthedocs.io/en/stable/) after the EC2 instance launches but before Jira has been installed. Watchmaker ensures that the resultant system is STIG-hardened. See the [Watchmaker document)(https://watchmaker.readthedocs.io/) for description of what Watchmaker does, how it does it and any additional, envionrment-specific fine-tuning that may be desired/needed.
+* The EC2 template runs [watchmaker](http://watchmaker.readthedocs.io/en/stable/) after the EC2 instance launches but before Jira has been installed. Watchmaker ensures that the resultant system is STIG-hardened. See the [Watchmaker document)(https://watchmaker.readthedocs.io/) for description of what Watchmaker does, how it does it and any additional, environment-specific fine-tuning that may be desired/needed.
 
 ![Build Status](https://travis-ci.org/plus3it/dotc-jira_dc.svg?branch=master)
