@@ -60,5 +60,7 @@ These templates and scripts are also designed to ensure that Jira data is persis
 * Ability to destroy and recreate at will, while retaining all configuration and hosted data, has been tested. It's expected that most such actions will happen via stack-update or autoscaling actions (manual, scheduled or reactive).  In the event that a stack-update results in two instances being "live" simultaneously, it will be necessary to restart the new instance after the pre-update instance terminates. This requirement is resultant Jira's built-in data-integrity protections.
 * Due to a [bug](https://bugzilla.redhat.com/show_bug.cgi?id=1312002) in the systemd/nfs-client implementation in RHEL/CentOS 7, reboots of instances have a better than 90% probability of hanging. This _should_ only effect template-users that deploy standalone Jira EC2s.
 * The EC2 template runs [watchmaker](http://watchmaker.readthedocs.io/en/stable/) after the EC2 instance launches but before Jira has been installed. Watchmaker ensures that the resultant system is STIG-hardened. See the [Watchmaker document)(https://watchmaker.readthedocs.io/) for description of what Watchmaker does, how it does it and any additional, environment-specific fine-tuning that may be desired/needed.
+* Additional Jira guides:
+  * [Jira Project Migration](docs/Jira-Project-Migrations.md)
 
 ![Build Status](https://travis-ci.org/plus3it/dotc-jira_dc.svg?branch=master)
